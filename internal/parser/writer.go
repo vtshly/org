@@ -1,0 +1,111 @@
+package parser
+
+import (
+	"bufio"
+	"fmt"
+	"os"
+	"strings"
+
+	"github.com/rwejlgaard/org/internal/model"
+)
+
+// Save writes the org file back to disk
+func Save(orgFile *model.OrgFile) error {
+	file, err := os.Create(orgFile.Path)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	writer := bufio.NewWriter(file)
+	defer writer.Flush()
+
+	for _, item := range orgFile.Items {
+		if err := writeItem(writer, item); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// writeItem recursively writes an item and its children
+func writeItem(writer *bufio.Writer, item *model.Item) error {
+	// Write heading
+	stars := strings.Repeat("*", item.Level)
+	line := stars
+	if item.State != model.StateNone {
+		line += " " + string(item.State)
+	}
+	line += " " + item.Title + "\n"
+
+	if _, err := writer.WriteString(line); err != nil {
+		return err
+	}
+
+	// Write scheduling info if not already in notes
+	hasScheduled := false
+	hasDeadline := false
+	hasLogbook := false
+	for _, note := range item.Notes {
+		if strings.Contains(note, "SCHEDULED:") {
+			hasScheduled = true
+		}
+		if strings.Contains(note, "DEADLINE:") {
+			hasDeadline = true
+		}
+		if strings.Contains(note, ":LOGBOOK:") {
+			hasLogbook = true
+		}
+	}
+
+	if item.Scheduled != nil && !hasScheduled {
+		scheduledLine := fmt.Sprintf("SCHEDULED: <%s>\n", FormatOrgDate(*item.Scheduled))
+		if _, err := writer.WriteString(scheduledLine); err != nil {
+			return err
+		}
+	}
+
+	if item.Deadline != nil && !hasDeadline {
+		deadlineLine := fmt.Sprintf("DEADLINE: <%s>\n", FormatOrgDate(*item.Deadline))
+		if _, err := writer.WriteString(deadlineLine); err != nil {
+			return err
+		}
+	}
+
+	// Write clock entries in :LOGBOOK: drawer if not already in notes
+	if len(item.ClockEntries) > 0 && !hasLogbook {
+		if _, err := writer.WriteString(":LOGBOOK:\n"); err != nil {
+			return err
+		}
+		for _, entry := range item.ClockEntries {
+			clockLine := fmt.Sprintf("CLOCK: [%s]", formatClockTimestamp(entry.Start))
+			if entry.End != nil {
+				clockLine += fmt.Sprintf("--[%s]", formatClockTimestamp(*entry.End))
+			}
+			clockLine += "\n"
+			if _, err := writer.WriteString(clockLine); err != nil {
+				return err
+			}
+		}
+		if _, err := writer.WriteString(":END:\n"); err != nil {
+			return err
+		}
+	}
+
+	// Write notes
+	for _, note := range item.Notes {
+		if _, err := writer.WriteString(note + "\n"); err != nil {
+			return err
+		}
+	}
+
+	// Write children
+	for _, child := range item.Children {
+		if err := writeItem(writer, child); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}

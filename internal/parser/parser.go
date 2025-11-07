@@ -1,0 +1,160 @@
+package parser
+
+import (
+	"bufio"
+	"os"
+	"regexp"
+	"strings"
+
+	"github.com/rwejlgaard/org/internal/model"
+)
+
+// Parser patterns
+var (
+	headingPattern   = regexp.MustCompile(`^(\*+)\s+(?:(TODO|PROG|BLOCK|DONE)\s+)?(.+)$`)
+	scheduledPattern = regexp.MustCompile(`SCHEDULED:\s*<([^>]+)>`)
+	deadlinePattern  = regexp.MustCompile(`DEADLINE:\s*<([^>]+)>`)
+	clockPattern     = regexp.MustCompile(`CLOCK:\s*\[([^\]]+)\](?:--\[([^\]]+)\])?`)
+	drawerStart      = regexp.MustCompile(`^\s*:LOGBOOK:\s*$`)
+	drawerEnd        = regexp.MustCompile(`^\s*:END:\s*$`)
+	codeBlockStart   = regexp.MustCompile(`^\s*#\+BEGIN_SRC`)
+	codeBlockEnd     = regexp.MustCompile(`^\s*#\+END_SRC`)
+)
+
+// ParseOrgFile reads and parses an org-mode file
+func ParseOrgFile(path string) (*model.OrgFile, error) {
+	file, err := os.Open(path)
+	if err != nil {
+		// If file doesn't exist, return empty org file
+		if os.IsNotExist(err) {
+			return &model.OrgFile{Path: path, Items: []*model.Item{}}, nil
+		}
+		return nil, err
+	}
+	defer file.Close()
+
+	orgFile := &model.OrgFile{Path: path, Items: []*model.Item{}}
+	scanner := bufio.NewScanner(file)
+
+	var currentItem *model.Item
+	var itemStack []*model.Item // Stack to track parent items
+	var inCodeBlock bool
+	var inLogbookDrawer bool
+
+	for scanner.Scan() {
+		line := scanner.Text()
+
+		// Check for drawer boundaries
+		if drawerStart.MatchString(line) {
+			inLogbookDrawer = true
+			if currentItem != nil {
+				currentItem.Notes = append(currentItem.Notes, line)
+			}
+			continue
+		}
+		if drawerEnd.MatchString(line) && inLogbookDrawer {
+			inLogbookDrawer = false
+			if currentItem != nil {
+				currentItem.Notes = append(currentItem.Notes, line)
+			}
+			continue
+		}
+
+		// Check for code block boundaries
+		if codeBlockStart.MatchString(line) {
+			inCodeBlock = true
+			if currentItem != nil {
+				currentItem.Notes = append(currentItem.Notes, line)
+			}
+			continue
+		}
+		if codeBlockEnd.MatchString(line) {
+			inCodeBlock = false
+			if currentItem != nil {
+				currentItem.Notes = append(currentItem.Notes, line)
+			}
+			continue
+		}
+
+		// If in code block, add line to notes
+		if inCodeBlock {
+			if currentItem != nil {
+				currentItem.Notes = append(currentItem.Notes, line)
+			}
+			continue
+		}
+
+		// Try to match heading
+		if matches := headingPattern.FindStringSubmatch(line); matches != nil {
+			level := len(matches[1])
+			state := model.TodoState(matches[2])
+			title := matches[3]
+
+			item := &model.Item{
+				Level:    level,
+				State:    state,
+				Title:    title,
+				Notes:    []string{},
+				Children: []*model.Item{},
+			}
+
+			// Find parent based on level
+			for len(itemStack) > 0 && itemStack[len(itemStack)-1].Level >= level {
+				itemStack = itemStack[:len(itemStack)-1]
+			}
+
+			if len(itemStack) == 0 {
+				// Top-level item
+				orgFile.Items = append(orgFile.Items, item)
+			} else {
+				// Child item
+				parent := itemStack[len(itemStack)-1]
+				parent.Children = append(parent.Children, item)
+			}
+
+			itemStack = append(itemStack, item)
+			currentItem = item
+		} else if currentItem != nil {
+			// This is content under the current item
+			trimmed := strings.TrimSpace(line)
+
+			// Check for SCHEDULED
+			if matches := scheduledPattern.FindStringSubmatch(line); matches != nil {
+				if t, err := parseOrgDate(matches[1]); err == nil {
+					currentItem.Scheduled = &t
+				}
+			}
+
+			// Check for DEADLINE
+			if matches := deadlinePattern.FindStringSubmatch(line); matches != nil {
+				if t, err := parseOrgDate(matches[1]); err == nil {
+					currentItem.Deadline = &t
+				}
+			}
+
+			// Check for CLOCK (can be inside or outside drawer)
+			if matches := clockPattern.FindStringSubmatch(line); matches != nil {
+				if startTime, err := parseClockTimestamp(matches[1]); err == nil {
+					entry := model.ClockEntry{Start: startTime}
+					if len(matches) > 2 && matches[2] != "" {
+						if endTime, err := parseClockTimestamp(matches[2]); err == nil {
+							entry.End = &endTime
+						}
+					}
+					currentItem.ClockEntries = append(currentItem.ClockEntries, entry)
+				}
+			}
+
+			// Add all lines as notes (including scheduling lines and drawer content for proper serialization)
+			if trimmed != "" || len(currentItem.Notes) > 0 {
+				currentItem.Notes = append(currentItem.Notes, line)
+			}
+		}
+	}
+
+	if err := scanner.Err(); err != nil {
+		return nil, err
+	}
+
+	return orgFile, nil
+}

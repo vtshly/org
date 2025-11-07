@@ -5,6 +5,9 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+
+	"github.com/rwejlgaard/org/internal/parser"
+	"github.com/rwejlgaard/org/internal/ui"
 )
 
 func main() {
@@ -29,20 +32,20 @@ func main() {
 	}
 
 	// Parse the org file
-	orgFile, err := ParseOrgFile(filePath)
+	orgFile, err := parser.ParseOrgFile(filePath)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error parsing org file: %v\n", err)
 		os.Exit(1)
 	}
 
 	// Run the UI
-	if err := runUI(orgFile); err != nil {
+	if err := ui.RunUI(orgFile); err != nil {
 		fmt.Fprintf(os.Stderr, "Error running UI: %v\n", err)
 		os.Exit(1)
 	}
 
 	// Save on exit
-	if err := orgFile.Save(); err != nil {
+	if err := parser.Save(orgFile); err != nil {
 		fmt.Fprintf(os.Stderr, "Error saving file: %v\n", err)
 		os.Exit(1)
 	}
