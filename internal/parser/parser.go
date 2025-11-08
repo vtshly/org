@@ -11,7 +11,7 @@ import (
 
 // Parser patterns
 var (
-	headingPattern      = regexp.MustCompile(`^(\*+)\s+(?:(TODO|PROG|BLOCK|DONE)\s+)?(?:\[#([A-C])\]\s+)?(.+)$`)
+	headingPattern      = regexp.MustCompile(`^(\*+)\s+(?:(TODO|PROG|BLOCK|DONE)\s+)?(?:\[#([A-C])\]\s+)?(.+?)(?:\s+(:[[:alnum:]_@#%:]+:)\s*)?$`)
 	scheduledPattern    = regexp.MustCompile(`SCHEDULED:\s*<([^>]+)>`)
 	deadlinePattern     = regexp.MustCompile(`DEADLINE:\s*<([^>]+)>`)
 	clockPattern        = regexp.MustCompile(`CLOCK:\s*\[([^\]]+)\](?:--\[([^\]]+)\])?`)
@@ -108,13 +108,24 @@ func ParseOrgFile(path string) (*model.OrgFile, error) {
 			level := len(matches[1])
 			state := model.TodoState(matches[2])
 			priority := model.Priority(matches[3])
-			title := matches[4]
+			title := strings.TrimSpace(matches[4])
+			tagsStr := matches[5]
+
+			// Parse tags from :tag1:tag2: format
+			var tags []string
+			if tagsStr != "" {
+				tagsStr = strings.Trim(tagsStr, ":")
+				if tagsStr != "" {
+					tags = strings.Split(tagsStr, ":")
+				}
+			}
 
 			item := &model.Item{
 				Level:    level,
 				State:    state,
 				Priority: priority,
 				Title:    title,
+				Tags:     tags,
 				Notes:    []string{},
 				Children: []*model.Item{},
 			}

@@ -26,9 +26,10 @@ org                      # Opens ./todo.org by default
 ## Features
 
 ### Task Management
-- **TODO States**: Cycle through TODO, PROG (in progress), BLOCK (blocked), and DONE states
+- **Customizable TODO States**: Define your own workflow states with custom colors (default: TODO, PROG, BLOCK, DONE)
 - **Hierarchical Tasks**: Create sub-tasks and organize items with multiple levels
 - **Priority Levels**: Set priorities (A, B, C) with color-coded indicators
+- **Tags**: Organize tasks with tags like `:work:urgent:` with customizable colors
 - **Folding**: Collapse and expand tasks and notes with Tab key
 - **Quick Capture**: Press 'c' to quickly capture new TODO items
 - **Reorder Mode**: Reorganize tasks with shift+up/down arrows
@@ -63,6 +64,7 @@ org                      # Opens ./todo.org by default
 | `c` | Capture new TODO |
 | `s` | Add sub-task |
 | `D` | Delete item (with confirmation) |
+| `#` | Add/edit tags |
 | `a` | Toggle agenda view |
 | `i` | Clock in |
 | `o` | Clock out |
@@ -71,9 +73,12 @@ org                      # Opens ./todo.org by default
 | `e` | Set effort |
 | `r` | Toggle reorder mode |
 | `shift+↑/↓` | Move item up/down |
+| `,` | Open settings |
 | `ctrl+s` | Save |
 | `?` | Toggle help |
 | `q` or `ctrl+c` | Quit |
+
+**Note**: All keybindings can be customized in the configuration file.
 
 ### Auto-save
 Changes are automatically saved when you quit the application.
@@ -91,9 +96,129 @@ Changes are automatically saved when you quit the application.
 ![delete](./.imgs/delete_prompt.png)
 ![priority](./.imgs/priority_prompt.png)
 
+## Configuration
+
+The application can be configured using a TOML configuration file located at:
+- Linux/macOS: `~/.config/org/config.toml`
+- Windows: `%APPDATA%\org\config.toml`
+
+The configuration file is automatically created with default values on first run.
+
+### Configuration Structure
+
+#### Tags
+Define custom tags with colors:
+```toml
+[tags]
+enabled = true
+default_tag = "work"
+
+[[tags.tags]]
+name = "work"
+color = "99"  # Blue
+
+[[tags.tags]]
+name = "personal"
+color = "141"  # Purple
+
+[[tags.tags]]
+name = "urgent"
+color = "196"  # Red
+```
+
+#### States
+Customize TODO states with colors:
+```toml
+[states]
+[[states.states]]
+name = "TODO"
+color = "202"  # Orange
+
+[[states.states]]
+name = "PROG"
+color = "220"  # Yellow
+
+[[states.states]]
+name = "BLOCK"
+color = "196"  # Red
+
+[[states.states]]
+name = "DONE"
+color = "34"   # Green
+```
+
+#### Colors
+Customize UI colors (using ANSI color codes):
+```toml
+[colors]
+todo = "202"      # Orange
+progress = "220"  # Yellow
+blocked = "196"   # Red
+done = "34"       # Green
+cursor = "240"    # Gray
+title = "99"      # Blue
+scheduled = "141" # Purple
+overdue = "196"   # Red
+status = "241"    # Dark gray
+note = "246"      # Light gray
+folded = "243"    # Medium gray
+```
+
+#### Keybindings
+Customize all keybindings (can specify multiple keys per action):
+```toml
+[keybindings]
+up = ["up", "k"]
+down = ["down", "j"]
+left = ["left", "h"]
+right = ["right", "l"]
+cycle_state = ["t", " "]
+toggle_fold = ["tab"]
+edit_notes = ["enter"]
+capture = ["c"]
+add_subtask = ["s"]
+delete = ["D"]
+tag_item = ["#"]
+settings = [","]
+toggle_view = ["a"]
+save = ["ctrl+s"]
+help = ["?"]
+quit = ["q", "ctrl+c"]
+# ... and more
+```
+
+### Settings UI
+
+Press `,` (comma) to open the settings interface where you can:
+
+#### Tags Tab
+- Add new tags with custom colors
+- Edit tag names and colors (format: `name,color`)
+- Delete tags with `D`
+- Reorder tags with `shift+up/down`
+
+#### States Tab
+- Add new TODO states with custom colors
+- Edit state names and colors (format: `name,color`)
+- Delete states with `D`
+- Reorder states with `shift+up/down` (affects cycling order)
+
+#### Keybindings Tab
+- View all keybindings
+- Edit keybindings (format: comma-separated keys, e.g., `up,k`)
+- Multiple keys can be bound to the same action
+
+**Navigation**: Use left/right arrows to switch between tabs
+**Auto-save**: All changes are automatically saved to the config file
+
 ## File Format
 
-The application uses standard Org-mode file format (.org), making it compatible with Emacs Org-mode and other Org-mode tools.
+The application uses standard Org-mode file format (.org), making it compatible with Emacs Org-mode and other Org-mode tools. Tags are stored in the standard org-mode format:
+
+```org
+* TODO Task title :work:urgent:
+* DONE Completed task :personal:
+```
 
 ## License
 

@@ -87,6 +87,14 @@ func (m uiModel) View() string {
 		return m.viewSetEffort()
 	case modeHelp:
 		return m.viewHelp()
+	case modeSettings:
+		return m.viewSettings()
+	case modeSettingsAddTag:
+		return m.viewSettingsAddTag()
+	case modeSettingsAddState:
+		return m.viewSettingsAddState()
+	case modeTagEdit:
+		return m.viewTagEdit()
 	}
 
 	// Build footer (status + help)
@@ -94,7 +102,7 @@ func (m uiModel) View() string {
 
 	// Status message
 	if time.Now().Before(m.statusExpiry) {
-		footer.WriteString(statusStyle.Render(m.statusMsg))
+		footer.WriteString(m.styles.statusStyle.Render(m.statusMsg))
 		footer.WriteString("\n")
 	}
 
@@ -117,10 +125,10 @@ func (m uiModel) View() string {
 	}
 	if m.reorderMode {
 		reorderIndicator := lipgloss.NewStyle().Foreground(lipgloss.Color("220")).Render(" [REORDER MODE]")
-		content.WriteString(titleStyle.Render(title))
+		content.WriteString(m.styles.titleStyle.Render(title))
 		content.WriteString(reorderIndicator)
 	} else {
-		content.WriteString(titleStyle.Render(title))
+		content.WriteString(m.styles.titleStyle.Render(title))
 	}
 	content.WriteString("\n\n")
 
@@ -261,7 +269,7 @@ func (m uiModel) viewConfirmDelete() string {
 		Width(60)
 
 	var content strings.Builder
-	content.WriteString(titleStyle.Render("⚠ Delete Item"))
+	content.WriteString(m.styles.titleStyle.Render("⚠ Delete Item"))
 	content.WriteString("\n\n")
 
 	if m.itemToDelete != nil {
@@ -271,7 +279,7 @@ func (m uiModel) viewConfirmDelete() string {
 	}
 
 	content.WriteString("\n")
-	content.WriteString(statusStyle.Render("This will delete the item and all sub-tasks."))
+	content.WriteString(m.styles.statusStyle.Render("This will delete the item and all sub-tasks."))
 	content.WriteString("\n\n")
 	content.WriteString("Press Y to confirm • N or ESC to cancel")
 
@@ -289,11 +297,11 @@ func (m uiModel) viewCapture() string {
 		Width(60)
 
 	var content strings.Builder
-	content.WriteString(titleStyle.Render("Capture TODO"))
+	content.WriteString(m.styles.titleStyle.Render("Capture TODO"))
 	content.WriteString("\n\n")
 	content.WriteString(m.textinput.View())
 	content.WriteString("\n\n")
-	content.WriteString(statusStyle.Render("Press Enter to save • ESC to cancel"))
+	content.WriteString(m.styles.statusStyle.Render("Press Enter to save • ESC to cancel"))
 
 	dialog := dialogStyle.Render(content.String())
 
@@ -309,15 +317,15 @@ func (m uiModel) viewAddSubTask() string {
 		Width(60)
 
 	var content strings.Builder
-	content.WriteString(titleStyle.Render("Add Sub-Task"))
+	content.WriteString(m.styles.titleStyle.Render("Add Sub-Task"))
 	content.WriteString("\n")
 	if m.editingItem != nil {
-		content.WriteString(statusStyle.Render(fmt.Sprintf("Under: %s", m.editingItem.Title)))
+		content.WriteString(m.styles.statusStyle.Render(fmt.Sprintf("Under: %s", m.editingItem.Title)))
 	}
 	content.WriteString("\n\n")
 	content.WriteString(m.textinput.View())
 	content.WriteString("\n\n")
-	content.WriteString(statusStyle.Render("Press Enter to save • ESC to cancel"))
+	content.WriteString(m.styles.statusStyle.Render("Press Enter to save • ESC to cancel"))
 
 	dialog := dialogStyle.Render(content.String())
 
@@ -333,19 +341,19 @@ func (m uiModel) viewSetDeadline() string {
 		Width(60)
 
 	var content strings.Builder
-	content.WriteString(titleStyle.Render("Set Deadline"))
+	content.WriteString(m.styles.titleStyle.Render("Set Deadline"))
 	content.WriteString("\n")
 	if m.editingItem != nil {
-		content.WriteString(statusStyle.Render(fmt.Sprintf("For: %s", m.editingItem.Title)))
+		content.WriteString(m.styles.statusStyle.Render(fmt.Sprintf("For: %s", m.editingItem.Title)))
 	}
 	content.WriteString("\n\n")
 	content.WriteString(m.textinput.View())
 	content.WriteString("\n\n")
-	content.WriteString(statusStyle.Render("Examples: 2025-12-31, +7 (7 days from now)"))
+	content.WriteString(m.styles.statusStyle.Render("Examples: 2025-12-31, +7 (7 days from now)"))
 	content.WriteString("\n")
-	content.WriteString(statusStyle.Render("Leave empty to clear deadline"))
+	content.WriteString(m.styles.statusStyle.Render("Leave empty to clear deadline"))
 	content.WriteString("\n")
-	content.WriteString(statusStyle.Render("Press Enter to save • ESC to cancel"))
+	content.WriteString(m.styles.statusStyle.Render("Press Enter to save • ESC to cancel"))
 
 	dialog := dialogStyle.Render(content.String())
 
@@ -361,13 +369,13 @@ func (m uiModel) viewSetPriority() string {
 		Width(60)
 
 	var content strings.Builder
-	content.WriteString(titleStyle.Render("Set Priority"))
+	content.WriteString(m.styles.titleStyle.Render("Set Priority"))
 	content.WriteString("\n")
 	if m.editingItem != nil {
-		content.WriteString(statusStyle.Render(fmt.Sprintf("For: %s", m.editingItem.Title)))
+		content.WriteString(m.styles.statusStyle.Render(fmt.Sprintf("For: %s", m.editingItem.Title)))
 		content.WriteString("\n")
 		if m.editingItem.Priority != model.PriorityNone {
-			content.WriteString(statusStyle.Render(fmt.Sprintf("Current: [#%s]", m.editingItem.Priority)))
+			content.WriteString(m.styles.statusStyle.Render(fmt.Sprintf("Current: [#%s]", m.editingItem.Priority)))
 		}
 	}
 	content.WriteString("\n\n")
@@ -381,9 +389,9 @@ func (m uiModel) viewSetPriority() string {
 	content.WriteString(priorityBStyle.Render("[B] Medium Priority") + "\n")
 	content.WriteString(priorityCStyle.Render("[C] Low Priority") + "\n")
 	content.WriteString("\n")
-	content.WriteString(statusStyle.Render("Press Space/Enter to clear priority"))
+	content.WriteString(m.styles.statusStyle.Render("Press Space/Enter to clear priority"))
 	content.WriteString("\n")
-	content.WriteString(statusStyle.Render("Press ESC to cancel"))
+	content.WriteString(m.styles.statusStyle.Render("Press ESC to cancel"))
 
 	dialog := dialogStyle.Render(content.String())
 
@@ -399,23 +407,23 @@ func (m uiModel) viewSetEffort() string {
 		Width(60)
 
 	var content strings.Builder
-	content.WriteString(titleStyle.Render("Set Effort"))
+	content.WriteString(m.styles.titleStyle.Render("Set Effort"))
 	content.WriteString("\n")
 	if m.editingItem != nil {
-		content.WriteString(statusStyle.Render(fmt.Sprintf("For: %s", m.editingItem.Title)))
+		content.WriteString(m.styles.statusStyle.Render(fmt.Sprintf("For: %s", m.editingItem.Title)))
 		content.WriteString("\n")
 		if m.editingItem.Effort != "" {
-			content.WriteString(statusStyle.Render(fmt.Sprintf("Current: %s", m.editingItem.Effort)))
+			content.WriteString(m.styles.statusStyle.Render(fmt.Sprintf("Current: %s", m.editingItem.Effort)))
 		}
 	}
 	content.WriteString("\n\n")
 	content.WriteString(m.textinput.View())
 	content.WriteString("\n\n")
-	content.WriteString(statusStyle.Render("Examples: 8h, 2d, 1w, 4h30m"))
+	content.WriteString(m.styles.statusStyle.Render("Examples: 8h, 2d, 1w, 4h30m"))
 	content.WriteString("\n")
-	content.WriteString(statusStyle.Render("Leave empty to clear effort"))
+	content.WriteString(m.styles.statusStyle.Render("Leave empty to clear effort"))
 	content.WriteString("\n")
-	content.WriteString(statusStyle.Render("Press Enter to save • ESC to cancel"))
+	content.WriteString(m.styles.statusStyle.Render("Press Enter to save • ESC to cancel"))
 
 	dialog := dialogStyle.Render(content.String())
 
@@ -428,7 +436,7 @@ func (m uiModel) viewHelp() string {
 	var lines []string
 
 	// Title
-	lines = append(lines, titleStyle.Render("Keybindings Help"))
+	lines = append(lines, m.styles.titleStyle.Render("Keybindings Help"))
 	lines = append(lines, "")
 
 	// Group bindings by category
@@ -436,8 +444,8 @@ func (m uiModel) viewHelp() string {
 	itemBindings := []key.Binding{m.keys.ToggleFold, m.keys.EditNotes, m.keys.CycleState}
 	taskBindings := []key.Binding{m.keys.Capture, m.keys.AddSubTask, m.keys.Delete}
 	timeBindings := []key.Binding{m.keys.ClockIn, m.keys.ClockOut, m.keys.SetDeadline, m.keys.SetEffort}
-	organizationBindings := []key.Binding{m.keys.SetPriority, m.keys.ShiftUp, m.keys.ShiftDown, m.keys.ToggleReorder}
-	viewBindings := []key.Binding{m.keys.ToggleView, m.keys.Save, m.keys.Help, m.keys.Quit}
+	organizationBindings := []key.Binding{m.keys.SetPriority, m.keys.TagItem, m.keys.ShiftUp, m.keys.ShiftDown, m.keys.ToggleReorder}
+	viewBindings := []key.Binding{m.keys.ToggleView, m.keys.Settings, m.keys.Save, m.keys.Help, m.keys.Quit}
 
 	// Helper function to render a binding
 	renderBinding := func(b key.Binding) string {
@@ -519,10 +527,10 @@ func (m uiModel) viewHelp() string {
 	var footer strings.Builder
 	if startLine > 0 || endLine < totalLines {
 		scrollInfo := fmt.Sprintf("(Scroll: %d-%d of %d lines)", startLine+1, endLine, totalLines)
-		footer.WriteString(statusStyle.Render(scrollInfo))
+		footer.WriteString(m.styles.statusStyle.Render(scrollInfo))
 		footer.WriteString(" ")
 	}
-	footer.WriteString(statusStyle.Render("↑/↓ scroll • ? or ESC to close"))
+	footer.WriteString(m.styles.statusStyle.Render("↑/↓ scroll • ? or ESC to close"))
 
 	// Combine content and footer
 	var result strings.Builder
@@ -543,12 +551,12 @@ func (m uiModel) viewHelp() string {
 func (m uiModel) viewEditMode() string {
 	var b strings.Builder
 
-	b.WriteString(titleStyle.Render("Editing Notes"))
+	b.WriteString(m.styles.titleStyle.Render("Editing Notes"))
 	b.WriteString("\n")
 	if m.editingItem != nil {
 		b.WriteString(fmt.Sprintf("Item: %s\n", m.editingItem.Title))
 	}
-	b.WriteString(statusStyle.Render("Press ESC to save and exit"))
+	b.WriteString(m.styles.statusStyle.Render("Press ESC to save and exit"))
 	b.WriteString("\n\n")
 
 	b.WriteString(m.textarea.View())
@@ -729,9 +737,9 @@ func (m uiModel) renderItem(item *model.Item, isCursor bool) string {
 	// Fold indicator
 	if len(item.Children) > 0 || len(item.Notes) > 0 {
 		if item.Folded {
-			b.WriteString(foldedStyle.Render("▶ "))
+			b.WriteString(m.styles.foldedStyle.Render("▶ "))
 		} else {
-			b.WriteString(foldedStyle.Render("▼ "))
+			b.WriteString(m.styles.foldedStyle.Render("▼ "))
 		}
 	} else {
 		b.WriteString("  ")
@@ -739,17 +747,10 @@ func (m uiModel) renderItem(item *model.Item, isCursor bool) string {
 
 	// State
 	stateStr := ""
-	switch item.State {
-	case model.StateTODO:
-		stateStr = todoStyle.Render("[TODO]")
-	case model.StatePROG:
-		stateStr = progStyle.Render("[PROG]")
-	case model.StateBLOCK:
-		stateStr = blockStyle.Render("[BLOCK]")
-	case model.StateDONE:
-		stateStr = doneStyle.Render("[DONE]")
-	default:
-		stateStr = "" // Empty space for alignment
+	if item.State != model.StateNone {
+		stateColor := m.config.GetStateColor(string(item.State))
+		stateStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(stateColor))
+		stateStr = stateStyle.Render(fmt.Sprintf("[%s]", item.State))
 	}
 	b.WriteString(stateStr)
 	b.WriteString(" ")
@@ -770,6 +771,16 @@ func (m uiModel) renderItem(item *model.Item, isCursor bool) string {
 
 	// Title
 	b.WriteString(item.Title)
+
+	// Tags
+	if len(item.Tags) > 0 {
+		b.WriteString(" ")
+		for _, tag := range item.Tags {
+			tagColor := m.config.GetTagColor(tag)
+			tagStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(tagColor))
+			b.WriteString(tagStyle.Render(fmt.Sprintf(":%s:", tag)))
+		}
+	}
 
 	// Effort
 	if item.Effort != "" {
@@ -812,23 +823,42 @@ func (m uiModel) renderItem(item *model.Item, isCursor bool) string {
 	if item.Scheduled != nil {
 		schedStr := fmt.Sprintf(" (Scheduled: %s)", parser.FormatOrgDate(*item.Scheduled))
 		if item.Scheduled.Before(now) {
-			b.WriteString(overdueStyle.Render(schedStr))
+			b.WriteString(m.styles.overdueStyle.Render(schedStr))
 		} else {
-			b.WriteString(scheduledStyle.Render(schedStr))
+			b.WriteString(m.styles.scheduledStyle.Render(schedStr))
 		}
 	}
 	if item.Deadline != nil {
 		deadlineStr := fmt.Sprintf(" (Deadline: %s)", parser.FormatOrgDate(*item.Deadline))
 		if item.Deadline.Before(now) {
-			b.WriteString(overdueStyle.Render(deadlineStr))
+			b.WriteString(m.styles.overdueStyle.Render(deadlineStr))
 		} else {
-			b.WriteString(scheduledStyle.Render(deadlineStr))
+			b.WriteString(m.styles.scheduledStyle.Render(deadlineStr))
 		}
 	}
 
 	line := b.String()
 	if isCursor {
-		return cursorStyle.Render(line)
+		return m.styles.cursorStyle.Render(line)
 	}
 	return line
+}
+
+// viewTagEdit renders the tag editing view
+func (m uiModel) viewTagEdit() string {
+	var content strings.Builder
+
+	content.WriteString(m.styles.titleStyle.Render("Edit Tags") + "\n\n")
+
+	if m.editingItem != nil {
+		content.WriteString(m.styles.statusStyle.Render(fmt.Sprintf("For: %s", m.editingItem.Title)) + "\n\n")
+	}
+
+	content.WriteString(m.textinput.View() + "\n\n")
+
+	content.WriteString(m.styles.statusStyle.Render("Enter tags separated by colons (e.g., work:urgent:important)") + "\n")
+	content.WriteString(m.styles.statusStyle.Render("Leave empty to remove all tags") + "\n\n")
+	content.WriteString(m.styles.statusStyle.Render("Press Enter to save • ESC to cancel") + "\n")
+
+	return content.String()
 }

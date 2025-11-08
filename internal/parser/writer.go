@@ -40,7 +40,14 @@ func writeItem(writer *bufio.Writer, item *model.Item) error {
 	if item.Priority != model.PriorityNone {
 		line += " [#" + string(item.Priority) + "]"
 	}
-	line += " " + item.Title + "\n"
+	line += " " + item.Title
+
+	// Add tags if present
+	if len(item.Tags) > 0 {
+		line += " :" + strings.Join(item.Tags, ":") + ":"
+	}
+
+	line += "\n"
 
 	if _, err := writer.WriteString(line); err != nil {
 		return err

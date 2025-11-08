@@ -18,6 +18,7 @@ type Item struct {
 	State        TodoState    // TODO, PROG, BLOCK, DONE, or empty
 	Priority     Priority     // Priority: A, B, C, or empty
 	Title        string       // The main title text
+	Tags         []string     // Tags for this item (e.g., :work:urgent:)
 	Scheduled    *time.Time
 	Deadline     *time.Time
 	Effort       string       // Effort estimate (e.g., "8h", "2d")

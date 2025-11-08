@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/rwejlgaard/org/internal/config"
 	"github.com/rwejlgaard/org/internal/parser"
 	"github.com/rwejlgaard/org/internal/ui"
 )
@@ -31,6 +32,13 @@ func main() {
 		filePath = filepath.Join(cwd, "todo.org")
 	}
 
+	// Load configuration
+	cfg, err := config.LoadConfig()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Warning: Error loading config, using defaults: %v\n", err)
+		cfg = config.DefaultConfig()
+	}
+
 	// Parse the org file
 	orgFile, err := parser.ParseOrgFile(filePath)
 	if err != nil {
@@ -39,7 +47,7 @@ func main() {
 	}
 
 	// Run the UI
-	if err := ui.RunUI(orgFile); err != nil {
+	if err := ui.RunUI(orgFile, cfg); err != nil {
 		fmt.Fprintf(os.Stderr, "Error running UI: %v\n", err)
 		os.Exit(1)
 	}

@@ -32,6 +32,14 @@ func (m uiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m.updateSetEffort(msg)
 	case modeHelp:
 		return m.updateHelp(msg)
+	case modeSettings:
+		return m.updateSettings(msg)
+	case modeSettingsAddTag:
+		return m.updateSettingsAddTag(msg)
+	case modeSettingsAddState:
+		return m.updateSettingsAddState(msg)
+	case modeTagEdit:
+		return m.updateTagEdit(msg)
 	}
 
 	switch msg := msg.(type) {
@@ -99,9 +107,10 @@ func (m uiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case key.Matches(msg, m.keys.Right):
 			items := m.getVisibleItems()
 			if len(items) > 0 && m.cursor < len(items) {
-				items[m.cursor].CycleState()
-				// Auto clock out when changing to DONE
-				if items[m.cursor].State == model.StateDONE && items[m.cursor].IsClockedIn() {
+				m.cycleStateForward(items[m.cursor])
+				// Auto clock out when changing to last state (typically DONE)
+				stateNames := m.config.GetStateNames()
+				if len(stateNames) > 0 && string(items[m.cursor].State) == stateNames[len(stateNames)-1] && items[m.cursor].IsClockedIn() {
 					items[m.cursor].ClockOut()
 				}
 				m.setStatus("State changed")
@@ -116,9 +125,10 @@ func (m uiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case key.Matches(msg, m.keys.CycleState):
 			items := m.getVisibleItems()
 			if len(items) > 0 && m.cursor < len(items) {
-				items[m.cursor].CycleState()
-				// Auto clock out when changing to DONE
-				if items[m.cursor].State == model.StateDONE && items[m.cursor].IsClockedIn() {
+				m.cycleStateForward(items[m.cursor])
+				// Auto clock out when changing to last state (typically DONE)
+				stateNames := m.config.GetStateNames()
+				if len(stateNames) > 0 && string(items[m.cursor].State) == stateNames[len(stateNames)-1] && items[m.cursor].IsClockedIn() {
 					items[m.cursor].ClockOut()
 				}
 				m.setStatus("State changed")
@@ -143,6 +153,22 @@ func (m uiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.textarea.SetValue(strings.Join(m.editingItem.Notes, "\n"))
 				m.textarea.Focus()
 				return m, textarea.Blink
+			}
+
+		case key.Matches(msg, m.keys.Settings):
+			m.mode = modeSettings
+			m.initSettings()
+			return m, nil
+
+		case key.Matches(msg, m.keys.TagItem):
+			items := m.getVisibleItems()
+			if len(items) > 0 && m.cursor < len(items) {
+				m.editingItem = items[m.cursor]
+				m.mode = modeTagEdit
+				m.textinput.SetValue(strings.Join(items[m.cursor].Tags, ":"))
+				m.textinput.Placeholder = "tag1:tag2:tag3"
+				m.textinput.Focus()
+				return m, textinput.Blink
 			}
 
 		case key.Matches(msg, m.keys.Capture):
@@ -587,18 +613,69 @@ func (m uiModel) updateSetEffort(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, cmd
 }
 
+func (m *uiModel) cycleStateForward(item *model.Item) {
+	stateNames := m.config.GetStateNames()
+	if len(stateNames) == 0 {
+		return
+	}
+
+	// Find current state index
+	currentIndex := -1
+	currentState := string(item.State)
+
+	// Handle empty state
+	if currentState == "" {
+		currentIndex = -1
+	} else {
+		for i, name := range stateNames {
+			if name == currentState {
+				currentIndex = i
+				break
+			}
+		}
+	}
+
+	// Cycle forward
+	if currentIndex < 0 || currentIndex >= len(stateNames)-1 {
+		if currentIndex == len(stateNames)-1 {
+			item.State = model.TodoState("") // Back to empty
+		} else {
+			item.State = model.TodoState(stateNames[0]) // First state
+		}
+	} else {
+		item.State = model.TodoState(stateNames[currentIndex+1])
+	}
+}
+
 func (m *uiModel) cycleStateBackward(item *model.Item) {
-	switch item.State {
-	case model.StateNone:
-		item.State = model.StateDONE
-	case model.StateTODO:
-		item.State = model.StateNone
-	case model.StatePROG:
-		item.State = model.StateTODO
-	case model.StateBLOCK:
-		item.State = model.StatePROG
-	case model.StateDONE:
-		item.State = model.StateBLOCK
+	stateNames := m.config.GetStateNames()
+	if len(stateNames) == 0 {
+		return
+	}
+
+	// Find current state index
+	currentIndex := -1
+	currentState := string(item.State)
+
+	// Handle empty state
+	if currentState == "" {
+		currentIndex = len(stateNames) // One past the last state
+	} else {
+		for i, name := range stateNames {
+			if name == currentState {
+				currentIndex = i
+				break
+			}
+		}
+	}
+
+	// Cycle backward
+	if currentIndex <= 0 {
+		item.State = model.TodoState("") // Empty state
+	} else if currentIndex > len(stateNames) {
+		item.State = model.TodoState(stateNames[len(stateNames)-1])
+	} else {
+		item.State = model.TodoState(stateNames[currentIndex-1])
 	}
 }
 
@@ -770,6 +847,49 @@ func (m uiModel) updateHelp(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "home", "g":
 			m.helpScroll = 0
 			return m, nil
+		}
+	}
+	return m, nil
+}
+
+// updateTagEdit handles tag editing mode
+func (m *uiModel) updateTagEdit(msg tea.Msg) (tea.Model, tea.Cmd) {
+	switch msg := msg.(type) {
+	case tea.KeyMsg:
+		switch {
+		case key.Matches(msg, m.keys.Quit):
+			m.mode = modeList
+			m.textinput.Blur()
+			return m, nil
+
+		case msg.Type == tea.KeyEnter:
+			if m.editingItem != nil {
+				// Parse tags from input (colon-separated)
+				tagsStr := m.textinput.Value()
+				var tags []string
+				if tagsStr != "" {
+					tags = strings.Split(tagsStr, ":")
+					// Remove empty strings
+					var filteredTags []string
+					for _, tag := range tags {
+						tag = strings.TrimSpace(tag)
+						if tag != "" {
+							filteredTags = append(filteredTags, tag)
+						}
+					}
+					tags = filteredTags
+				}
+				m.editingItem.Tags = tags
+				m.setStatus("Tags updated")
+			}
+			m.mode = modeList
+			m.textinput.Blur()
+			return m, nil
+
+		default:
+			var cmd tea.Cmd
+			m.textinput, cmd = m.textinput.Update(msg)
+			return m, cmd
 		}
 	}
 	return m, nil

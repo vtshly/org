@@ -7,6 +7,7 @@ import (
 	"github.com/charmbracelet/bubbles/textarea"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/rwejlgaard/org/internal/config"
 	"github.com/rwejlgaard/org/internal/model"
 )
 
@@ -23,6 +24,8 @@ const (
 	modeSetPriority
 	modeSetEffort
 	modeHelp
+	modeSettings
+	modeTagEdit
 )
 
 type uiModel struct {
@@ -33,6 +36,8 @@ type uiModel struct {
 	mode           viewMode
 	help           help.Model
 	keys           keyMap
+	styles         styleMap
+	config         *config.Config
 	width          int
 	height         int
 	statusMsg      string
@@ -40,11 +45,14 @@ type uiModel struct {
 	editingItem    *model.Item
 	textarea       textarea.Model
 	textinput      textinput.Model
-	itemToDelete   *model.Item
-	reorderMode    bool
+	itemToDelete     *model.Item
+	reorderMode      bool
+	settingsCursor   int             // Cursor position in settings view
+	settingsScroll   int             // Scroll position in settings view
+	settingsSection  settingsSection // Current settings section/tab
 }
 
-func initialModel(orgFile *model.OrgFile) uiModel {
+func InitialModel(orgFile *model.OrgFile, cfg *config.Config) uiModel {
 	ta := textarea.New()
 	ta.Placeholder = "Enter notes here (code blocks supported)..."
 	ta.ShowLineNumbers = false
@@ -61,7 +69,9 @@ func initialModel(orgFile *model.OrgFile) uiModel {
 		cursor:    0,
 		mode:      modeList,
 		help:      h,
-		keys:      keys,
+		keys:      newKeyMapFromConfig(cfg),
+		styles:    newStyleMapFromConfig(cfg),
+		config:    cfg,
 		textarea:  ta,
 		textinput: ti,
 	}
@@ -122,8 +132,8 @@ func (m *uiModel) updateScrollOffset(availableHeight int) {
 }
 
 // RunUI starts the terminal UI
-func RunUI(orgFile *model.OrgFile) error {
-	p := tea.NewProgram(initialModel(orgFile), tea.WithAltScreen())
+func RunUI(orgFile *model.OrgFile, cfg *config.Config) error {
+	p := tea.NewProgram(InitialModel(orgFile, cfg), tea.WithAltScreen())
 	_, err := p.Run()
 	return err
 }

@@ -1,6 +1,11 @@
 package ui
 
-import "github.com/charmbracelet/bubbles/key"
+import (
+	"strings"
+
+	"github.com/charmbracelet/bubbles/key"
+	"github.com/rwejlgaard/org/internal/config"
+)
 
 type keyMap struct {
 	Up            key.Binding
@@ -25,97 +30,134 @@ type keyMap struct {
 	SetDeadline   key.Binding
 	SetPriority   key.Binding
 	SetEffort     key.Binding
+	Settings      key.Binding
+	TagItem       key.Binding
 }
 
-var keys = keyMap{
-	Up: key.NewBinding(
-		key.WithKeys("up", "k"),
-		key.WithHelp("↑/k", "move up"),
-	),
-	Down: key.NewBinding(
-		key.WithKeys("down", "j"),
-		key.WithHelp("↓/j", "move down"),
-	),
-	Left: key.NewBinding(
-		key.WithKeys("left", "h"),
-		key.WithHelp("←/h", "cycle state backward"),
-	),
-	Right: key.NewBinding(
-		key.WithKeys("right", "l"),
-		key.WithHelp("→/l", "cycle state forward"),
-	),
-	ShiftUp: key.NewBinding(
-		key.WithKeys("shift+up"),
-		key.WithHelp("shift+↑", "move item up"),
-	),
-	ShiftDown: key.NewBinding(
-		key.WithKeys("shift+down"),
-		key.WithHelp("shift+↓", "move item down"),
-	),
-	CycleState: key.NewBinding(
-		key.WithKeys("t", " "),
-		key.WithHelp("t/space", "cycle todo state"),
-	),
-	ToggleFold: key.NewBinding(
-		key.WithKeys("tab"),
-		key.WithHelp("tab", "fold/unfold"),
-	),
-	EditNotes: key.NewBinding(
-		key.WithKeys("enter"),
-		key.WithHelp("enter", "edit notes"),
-	),
-	ToggleView: key.NewBinding(
-		key.WithKeys("a"),
-		key.WithHelp("a", "toggle agenda view"),
-	),
-	Capture: key.NewBinding(
-		key.WithKeys("c"),
-		key.WithHelp("c", "capture TODO"),
-	),
-	AddSubTask: key.NewBinding(
-		key.WithKeys("s"),
-		key.WithHelp("s", "add sub-task"),
-	),
-	Delete: key.NewBinding(
-		key.WithKeys("D"),
-		key.WithHelp("D", "delete item"),
-	),
-	Save: key.NewBinding(
-		key.WithKeys("ctrl+s"),
-		key.WithHelp("ctrl+s", "save"),
-	),
-	ToggleReorder: key.NewBinding(
-		key.WithKeys("r"),
-		key.WithHelp("r", "reorder mode"),
-	),
-	ClockIn: key.NewBinding(
-		key.WithKeys("i"),
-		key.WithHelp("i", "clock in"),
-	),
-	ClockOut: key.NewBinding(
-		key.WithKeys("o"),
-		key.WithHelp("o", "clock out"),
-	),
-	SetDeadline: key.NewBinding(
-		key.WithKeys("d"),
-		key.WithHelp("d", "set deadline"),
-	),
-	SetPriority: key.NewBinding(
-		key.WithKeys("p"),
-		key.WithHelp("p", "set priority"),
-	),
-	SetEffort: key.NewBinding(
-		key.WithKeys("e"),
-		key.WithHelp("e", "set effort"),
-	),
-	Help: key.NewBinding(
-		key.WithKeys("?"),
-		key.WithHelp("?", "toggle help"),
-	),
-	Quit: key.NewBinding(
-		key.WithKeys("q", "ctrl+c"),
-		key.WithHelp("q", "quit"),
-	),
+// newKeyMapFromConfig creates a keyMap from configuration
+func newKeyMapFromConfig(cfg *config.Config) keyMap {
+	kb := cfg.Keybindings
+
+	return keyMap{
+		Up: key.NewBinding(
+			key.WithKeys(kb.Up...),
+			key.WithHelp(formatKeyHelp(kb.Up), "move up"),
+		),
+		Down: key.NewBinding(
+			key.WithKeys(kb.Down...),
+			key.WithHelp(formatKeyHelp(kb.Down), "move down"),
+		),
+		Left: key.NewBinding(
+			key.WithKeys(kb.Left...),
+			key.WithHelp(formatKeyHelp(kb.Left), "cycle state backward"),
+		),
+		Right: key.NewBinding(
+			key.WithKeys(kb.Right...),
+			key.WithHelp(formatKeyHelp(kb.Right), "cycle state forward"),
+		),
+		ShiftUp: key.NewBinding(
+			key.WithKeys(kb.ShiftUp...),
+			key.WithHelp(formatKeyHelp(kb.ShiftUp), "move item up"),
+		),
+		ShiftDown: key.NewBinding(
+			key.WithKeys(kb.ShiftDown...),
+			key.WithHelp(formatKeyHelp(kb.ShiftDown), "move item down"),
+		),
+		CycleState: key.NewBinding(
+			key.WithKeys(kb.CycleState...),
+			key.WithHelp(formatKeyHelp(kb.CycleState), "cycle todo state"),
+		),
+		ToggleFold: key.NewBinding(
+			key.WithKeys(kb.ToggleFold...),
+			key.WithHelp(formatKeyHelp(kb.ToggleFold), "fold/unfold"),
+		),
+		EditNotes: key.NewBinding(
+			key.WithKeys(kb.EditNotes...),
+			key.WithHelp(formatKeyHelp(kb.EditNotes), "edit notes"),
+		),
+		ToggleView: key.NewBinding(
+			key.WithKeys(kb.ToggleView...),
+			key.WithHelp(formatKeyHelp(kb.ToggleView), "toggle agenda view"),
+		),
+		Capture: key.NewBinding(
+			key.WithKeys(kb.Capture...),
+			key.WithHelp(formatKeyHelp(kb.Capture), "capture TODO"),
+		),
+		AddSubTask: key.NewBinding(
+			key.WithKeys(kb.AddSubTask...),
+			key.WithHelp(formatKeyHelp(kb.AddSubTask), "add sub-task"),
+		),
+		Delete: key.NewBinding(
+			key.WithKeys(kb.Delete...),
+			key.WithHelp(formatKeyHelp(kb.Delete), "delete item"),
+		),
+		Save: key.NewBinding(
+			key.WithKeys(kb.Save...),
+			key.WithHelp(formatKeyHelp(kb.Save), "save"),
+		),
+		ToggleReorder: key.NewBinding(
+			key.WithKeys(kb.ToggleReorder...),
+			key.WithHelp(formatKeyHelp(kb.ToggleReorder), "reorder mode"),
+		),
+		ClockIn: key.NewBinding(
+			key.WithKeys(kb.ClockIn...),
+			key.WithHelp(formatKeyHelp(kb.ClockIn), "clock in"),
+		),
+		ClockOut: key.NewBinding(
+			key.WithKeys(kb.ClockOut...),
+			key.WithHelp(formatKeyHelp(kb.ClockOut), "clock out"),
+		),
+		SetDeadline: key.NewBinding(
+			key.WithKeys(kb.SetDeadline...),
+			key.WithHelp(formatKeyHelp(kb.SetDeadline), "set deadline"),
+		),
+		SetPriority: key.NewBinding(
+			key.WithKeys(kb.SetPriority...),
+			key.WithHelp(formatKeyHelp(kb.SetPriority), "set priority"),
+		),
+		SetEffort: key.NewBinding(
+			key.WithKeys(kb.SetEffort...),
+			key.WithHelp(formatKeyHelp(kb.SetEffort), "set effort"),
+		),
+		Help: key.NewBinding(
+			key.WithKeys(kb.Help...),
+			key.WithHelp(formatKeyHelp(kb.Help), "toggle help"),
+		),
+		Quit: key.NewBinding(
+			key.WithKeys(kb.Quit...),
+			key.WithHelp(formatKeyHelp(kb.Quit), "quit"),
+		),
+		Settings: key.NewBinding(
+			key.WithKeys(kb.Settings...),
+			key.WithHelp(formatKeyHelp(kb.Settings), "settings"),
+		),
+		TagItem: key.NewBinding(
+			key.WithKeys(kb.TagItem...),
+			key.WithHelp(formatKeyHelp(kb.TagItem), "add/edit tags"),
+		),
+	}
+}
+
+// formatKeyHelp formats a slice of keys for display in help
+func formatKeyHelp(keys []string) string {
+	if len(keys) == 0 {
+		return ""
+	}
+	// Take first two keys for display
+	if len(keys) == 1 {
+		return formatKey(keys[0])
+	}
+	return formatKey(keys[0]) + "/" + formatKey(keys[1])
+}
+
+// formatKey formats a single key for display
+func formatKey(k string) string {
+	// Convert key names to symbols where appropriate
+	k = strings.ReplaceAll(k, "up", "↑")
+	k = strings.ReplaceAll(k, "down", "↓")
+	k = strings.ReplaceAll(k, "left", "←")
+	k = strings.ReplaceAll(k, "right", "→")
+	return k
 }
 
 func (k keyMap) ShortHelp() []key.Binding {
@@ -139,6 +181,6 @@ func (k keyMap) getAllBindings() []key.Binding {
 		k.ToggleFold, k.EditNotes, k.ToggleReorder,
 		k.Capture, k.AddSubTask, k.Delete, k.Save,
 		k.ClockIn, k.ClockOut, k.SetDeadline, k.SetPriority, k.SetEffort,
-		k.ToggleView, k.Help, k.Quit,
+		k.TagItem, k.Settings, k.ToggleView, k.Help, k.Quit,
 	}
 }
