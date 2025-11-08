@@ -660,11 +660,20 @@ func renderNotesWithHighlighting(notes []string) []string {
 			} else if codeBlockDelimiter == "markdown" {
 				// Ending a markdown code block
 				inCodeBlock = false
-				// Highlight and add the code
+				// Highlight and add the code (or render LaTeX)
 				if len(codeLines) > 0 {
-					highlighted := highlightCode(strings.Join(codeLines, "\n"), codeLanguage)
-					highlightedLines := strings.Split(highlighted, "\n")
-					result = append(result, highlightedLines...)
+					var processedLines []string
+					if codeLanguage == "latex" {
+						// Apply LaTeX-to-Unicode conversion
+						for _, line := range codeLines {
+							processedLines = append(processedLines, renderLatexMath(line))
+						}
+					} else {
+						// Apply syntax highlighting
+						highlighted := highlightCode(strings.Join(codeLines, "\n"), codeLanguage)
+						processedLines = strings.Split(highlighted, "\n")
+					}
+					result = append(result, processedLines...)
 				}
 				result = append(result, note) // Keep the delimiter visible
 				codeLines = []string{}
@@ -677,11 +686,20 @@ func renderNotesWithHighlighting(notes []string) []string {
 		// Check for org-mode style code block end
 		if strings.HasPrefix(trimmed, "#+END_SRC") {
 			inCodeBlock = false
-			// Highlight and add the code
+			// Highlight and add the code (or render LaTeX)
 			if len(codeLines) > 0 {
-				highlighted := highlightCode(strings.Join(codeLines, "\n"), codeLanguage)
-				highlightedLines := strings.Split(highlighted, "\n")
-				result = append(result, highlightedLines...)
+				var processedLines []string
+				if codeLanguage == "latex" {
+					// Apply LaTeX-to-Unicode conversion
+					for _, line := range codeLines {
+						processedLines = append(processedLines, renderLatexMath(line))
+					}
+				} else {
+					// Apply syntax highlighting
+					highlighted := highlightCode(strings.Join(codeLines, "\n"), codeLanguage)
+					processedLines = strings.Split(highlighted, "\n")
+				}
+				result = append(result, processedLines...)
 			}
 			result = append(result, note) // Keep the delimiter visible
 			codeLines = []string{}
@@ -700,9 +718,18 @@ func renderNotesWithHighlighting(notes []string) []string {
 
 	// Handle case where code block wasn't closed
 	if inCodeBlock && len(codeLines) > 0 {
-		highlighted := highlightCode(strings.Join(codeLines, "\n"), codeLanguage)
-		highlightedLines := strings.Split(highlighted, "\n")
-		result = append(result, highlightedLines...)
+		var processedLines []string
+		if codeLanguage == "latex" {
+			// Apply LaTeX-to-Unicode conversion
+			for _, line := range codeLines {
+				processedLines = append(processedLines, renderLatexMath(line))
+			}
+		} else {
+			// Apply syntax highlighting
+			highlighted := highlightCode(strings.Join(codeLines, "\n"), codeLanguage)
+			processedLines = strings.Split(highlighted, "\n")
+		}
+		result = append(result, processedLines...)
 	}
 
 	return result
