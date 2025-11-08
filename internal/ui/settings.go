@@ -140,7 +140,7 @@ func (m *uiModel) getSettingsItemCount() int {
 	case settingsSectionTags:
 		return len(m.config.Tags.Tags) + 1 // +1 for "Add new tag" option
 	case settingsSectionStates:
-		return len(m.config.States.States) + 1 // +1 for "Add new state" option
+		return len(m.config.States.States) + 2 // +1 for "Default new task state" setting, +1 for "Add new state" option
 	case settingsSectionKeybindings:
 		return len(m.config.GetAllKeybindings())
 	default:
@@ -161,10 +161,20 @@ func (m *uiModel) startSettingsEdit() {
 		m.textinput.Focus()
 
 	case settingsSectionStates:
-		if m.settingsCursor >= len(m.config.States.States) {
+		// First item is the default new task state setting
+		if m.settingsCursor == 0 {
+			m.textinput.SetValue(m.config.States.DefaultNewTaskState)
+			m.textinput.Placeholder = "Enter state name or leave empty for none"
+			m.textinput.Focus()
 			return
 		}
-		state := m.config.States.States[m.settingsCursor]
+
+		// Adjust for the default state setting offset
+		stateIndex := m.settingsCursor - 1
+		if stateIndex >= len(m.config.States.States) {
+			return
+		}
+		state := m.config.States.States[stateIndex]
 		m.textinput.SetValue(state.Name + "," + state.Color)
 		m.textinput.Placeholder = "name,color (e.g., TODO,202)"
 		m.textinput.Focus()
@@ -223,13 +233,33 @@ func (m *uiModel) saveSettingsEdit() {
 		}
 
 	case settingsSectionStates:
-		if m.settingsCursor >= len(m.config.States.States) {
+		// First item is the default new task state setting
+		if m.settingsCursor == 0 {
+			newDefault := strings.TrimSpace(m.textinput.Value())
+			// Convert to uppercase
+			newDefault = strings.ToUpper(newDefault)
+			m.config.States.DefaultNewTaskState = newDefault
+			if newDefault == "" {
+				m.setStatus("Default new task state set to 'none' (saved)")
+			} else {
+				m.setStatus(fmt.Sprintf("Default new task state set to '%s' (saved)", newDefault))
+			}
+			// Auto-save
+			if err := m.config.Save(); err != nil {
+				m.setStatus(fmt.Sprintf("Error auto-saving config: %v", err))
+			}
+			return
+		}
+
+		// Adjust for the default state setting offset
+		stateIndex := m.settingsCursor - 1
+		if stateIndex >= len(m.config.States.States) {
 			return
 		}
 		// Parse "name,color" format
 		parts := strings.Split(m.textinput.Value(), ",")
 		if len(parts) >= 2 {
-			state := &m.config.States.States[m.settingsCursor]
+			state := &m.config.States.States[stateIndex]
 			state.Name = strings.TrimSpace(parts[0])
 			state.Color = strings.TrimSpace(parts[1])
 			m.setStatus(fmt.Sprintf("Updated state '%s' (saved)", state.Name))
@@ -316,18 +346,27 @@ func (m *uiModel) deleteSettingsItem() {
 		}
 
 	case settingsSectionStates:
-		if m.settingsCursor >= len(m.config.States.States) {
+		// Cannot delete the default new task state setting (first item)
+		if m.settingsCursor == 0 {
+			m.setStatus("Cannot delete default state setting (use Enter to edit)")
 			return
 		}
-		state := m.config.States.States[m.settingsCursor]
+
+		// Adjust for the default state setting offset
+		stateIndex := m.settingsCursor - 1
+		if stateIndex >= len(m.config.States.States) {
+			return
+		}
+		state := m.config.States.States[stateIndex]
 		m.config.RemoveState(state.Name)
 		m.setStatus(fmt.Sprintf("Deleted state '%s' (saved)", state.Name))
 
 		// Adjust cursor if needed
-		if m.settingsCursor >= len(m.config.States.States) {
-			m.settingsCursor = len(m.config.States.States) - 1
-			if m.settingsCursor < 0 {
-				m.settingsCursor = 0
+		// +1 for the default state setting
+		if m.settingsCursor >= len(m.config.States.States)+1 {
+			m.settingsCursor = len(m.config.States.States)
+			if m.settingsCursor < 1 {
+				m.settingsCursor = 1
 			}
 		}
 
@@ -465,11 +504,30 @@ func (m *uiModel) viewSettingsTags() string {
 func (m *uiModel) viewSettingsStates() string {
 	var content strings.Builder
 
+	// First show the default new task state setting
+	line := ""
+	if m.settingsCursor == 0 && !m.textinput.Focused() {
+		line += "▶ "
+	} else {
+		line += "  "
+	}
+	line += "Default new task state: "
+	if m.config.States.DefaultNewTaskState == "" {
+		line += m.styles.statusStyle.Render("(none)")
+	} else {
+		// Try to get the color for this state
+		color := m.config.GetStateColor(m.config.States.DefaultNewTaskState)
+		stateStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(color))
+		line += stateStyle.Render(m.config.States.DefaultNewTaskState)
+	}
+	content.WriteString(line + "\n\n")
+
+	// Then show all configured states
 	for i, state := range m.config.States.States {
 		line := ""
 
-		// Cursor
-		if i == m.settingsCursor && !m.textinput.Focused() {
+		// Cursor (offset by 1 because of the default state setting)
+		if i+1 == m.settingsCursor && !m.textinput.Focused() {
 			line += "▶ "
 		} else {
 			line += "  "
@@ -484,7 +542,7 @@ func (m *uiModel) viewSettingsStates() string {
 	}
 
 	// Add new state option
-	if m.settingsCursor == len(m.config.States.States) && !m.textinput.Focused() {
+	if m.settingsCursor == len(m.config.States.States)+1 && !m.textinput.Focused() {
 		content.WriteString("▶ ")
 	} else {
 		content.WriteString("  ")
@@ -666,10 +724,17 @@ func (m *uiModel) moveSettingsItemUp() {
 		}
 
 	case settingsSectionStates:
-		if m.settingsCursor > 0 && m.settingsCursor < len(m.config.States.States) {
+		// Cannot reorder the default state setting (first item)
+		if m.settingsCursor <= 1 {
+			return
+		}
+
+		// Adjust for the default state setting offset
+		stateIndex := m.settingsCursor - 1
+		if stateIndex > 0 && stateIndex < len(m.config.States.States) {
 			// Swap with previous item
-			m.config.States.States[m.settingsCursor], m.config.States.States[m.settingsCursor-1] =
-				m.config.States.States[m.settingsCursor-1], m.config.States.States[m.settingsCursor]
+			m.config.States.States[stateIndex], m.config.States.States[stateIndex-1] =
+				m.config.States.States[stateIndex-1], m.config.States.States[stateIndex]
 			m.settingsCursor--
 			// Auto-save
 			if err := m.config.Save(); err != nil {
@@ -703,10 +768,17 @@ func (m *uiModel) moveSettingsItemDown() {
 		}
 
 	case settingsSectionStates:
-		if m.settingsCursor >= 0 && m.settingsCursor < len(m.config.States.States)-1 {
+		// Cannot reorder the default state setting (first item)
+		if m.settingsCursor == 0 {
+			return
+		}
+
+		// Adjust for the default state setting offset
+		stateIndex := m.settingsCursor - 1
+		if stateIndex >= 0 && stateIndex < len(m.config.States.States)-1 {
 			// Swap with next item
-			m.config.States.States[m.settingsCursor], m.config.States.States[m.settingsCursor+1] =
-				m.config.States.States[m.settingsCursor+1], m.config.States.States[m.settingsCursor]
+			m.config.States.States[stateIndex], m.config.States.States[stateIndex+1] =
+				m.config.States.States[stateIndex+1], m.config.States.States[stateIndex]
 			m.settingsCursor++
 			// Auto-save
 			if err := m.config.Save(); err != nil {

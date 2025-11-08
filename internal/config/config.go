@@ -82,7 +82,8 @@ type StateConfig struct {
 
 // StatesConfig holds TODO state configurations
 type StatesConfig struct {
-	States []StateConfig `toml:"states"`
+	States              []StateConfig `toml:"states"`
+	DefaultNewTaskState string        `toml:"default_new_task_state"`
 }
 
 // UIConfig holds UI-related configurations
@@ -151,6 +152,7 @@ func DefaultConfig() *Config {
 				{Name: "BLOCK", Color: "196"},
 				{Name: "DONE", Color: "34"},
 			},
+			DefaultNewTaskState: "TODO",
 		},
 		UI: UIConfig{
 			HelpTextWidth:    22,
@@ -355,6 +357,9 @@ func (c *Config) fillDefaults() {
 	if len(c.States.States) == 0 {
 		c.States.States = defaults.States.States
 	}
+	if c.States.DefaultNewTaskState == "" {
+		c.States.DefaultNewTaskState = defaults.States.DefaultNewTaskState
+	}
 
 	// Fill UI if zero values
 	if c.UI.HelpTextWidth == 0 {
@@ -541,4 +546,27 @@ func (c *Config) GetAllKeybindings() map[string][]string {
 		"settings":      c.Keybindings.Settings,
 		"tag_item":      c.Keybindings.TagItem,
 	}
+}
+
+// GetDefaultNewTaskState returns the default state for new tasks
+// Returns empty string if configured as "none" or if the configured state doesn't exist
+func (c *Config) GetDefaultNewTaskState() string {
+	// Empty string means no state
+	if c.States.DefaultNewTaskState == "" {
+		return ""
+	}
+
+	// Validate that the configured state exists
+	for _, state := range c.States.States {
+		if state.Name == c.States.DefaultNewTaskState {
+			return c.States.DefaultNewTaskState
+		}
+	}
+
+	// If configured state doesn't exist, fall back to first state or empty
+	if len(c.States.States) > 0 {
+		return c.States.States[0].Name
+	}
+
+	return ""
 }

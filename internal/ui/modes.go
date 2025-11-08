@@ -345,10 +345,13 @@ func (m uiModel) updateCapture(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case tea.KeyEnter:
 			title := strings.TrimSpace(m.textinput.Value())
 			if title != "" {
+				// Get default state from config
+				defaultState := model.TodoState(m.config.GetDefaultNewTaskState())
+
 				// Create new TODO at top level
 				newItem := &model.Item{
 					Level:    1,
-					State:    model.StateTODO,
+					State:    defaultState,
 					Title:    title,
 					Notes:    []string{},
 					Children: []*model.Item{},
@@ -387,10 +390,13 @@ func (m uiModel) updateAddSubTask(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case tea.KeyEnter:
 			title := strings.TrimSpace(m.textinput.Value())
 			if title != "" && m.editingItem != nil {
+				// Get default state from config
+				defaultState := model.TodoState(m.config.GetDefaultNewTaskState())
+
 				// Create new sub-task
 				newItem := &model.Item{
 					Level:    m.editingItem.Level + 1,
-					State:    model.StateTODO,
+					State:    defaultState,
 					Title:    title,
 					Notes:    []string{},
 					Children: []*model.Item{},
