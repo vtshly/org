@@ -1,0 +1,167 @@
+name: Release
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  create-release:
+    name: Create GitHub Release
+    runs-on: ubuntu-latest
+    outputs:
+      new_version: ${{ steps.bump_version.outputs.new_version }}
+      upload_url: ${{ steps.create_release.outputs.upload_url }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Get latest tag
+        id: get_latest_tag
+        run: |
+          # Get the latest tag, default to v0.0.0 if no tags exist
+          LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
+          echo "latest_tag=${LATEST_TAG}" >> $GITHUB_OUTPUT
+          echo "Latest tag: ${LATEST_TAG}"
+
+      - name: Get commit message
+        id: get_commit_message
+        run: |
+          COMMIT_MSG=$(git log -1 --pretty=%B)
+          echo "commit_message=${COMMIT_MSG}" >> $GITHUB_OUTPUT
+          echo "Commit message: ${COMMIT_MSG}"
+
+      - name: Determine version bump
+        id: bump_version
+        run: |
+          LATEST_TAG="${{ steps.get_latest_tag.outputs.latest_tag }}"
+          COMMIT_MSG="${{ steps.get_commit_message.outputs.commit_message }}"
+
+          # Remove 'v' prefix if present
+          VERSION=${LATEST_TAG#v}
+
+          # Split version into components
+          IFS='.' read -r MAJOR MINOR PATCH <<< "$VERSION"
+
+          # Default values if parsing fails
+          MAJOR=${MAJOR:-0}
+          MINOR=${MINOR:-0}
+          PATCH=${PATCH:-0}
+
+          echo "Current version: $MAJOR.$MINOR.$PATCH"
+
+          # Determine bump type based on commit message prefix
+          if [[ "$COMMIT_MSG" =~ ^major:.*|^MAJOR:.*|^breaking:.*|^BREAKING:.* ]]; then
+            MAJOR=$((MAJOR + 1))
+            MINOR=0
+            PATCH=0
+            echo "bump_type=major" >> $GITHUB_OUTPUT
+          elif [[ "$COMMIT_MSG" =~ ^feat:.*|^feature:.*|^FEAT:.*|^FEATURE:.* ]]; then
+            MINOR=$((MINOR + 1))
+            PATCH=0
+            echo "bump_type=minor" >> $GITHUB_OUTPUT
+          elif [[ "$COMMIT_MSG" =~ ^fix:.*|^FIX:.*|^bugfix:.*|^BUGFIX:.* ]]; then
+            PATCH=$((PATCH + 1))
+            echo "bump_type=patch" >> $GITHUB_OUTPUT
+          else
+            echo "No version bump keyword found in commit message. Skipping release."
+            echo "bump_type=none" >> $GITHUB_OUTPUT
+            echo "new_version=" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          NEW_VERSION="v$MAJOR.$MINOR.$PATCH"
+          echo "new_version=${NEW_VERSION}" >> $GITHUB_OUTPUT
+          echo "New version: ${NEW_VERSION}"
+
+      - name: Configure Git
+        if: steps.bump_version.outputs.new_version != ''
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Create and push tag
+        if: steps.bump_version.outputs.new_version != ''
+        run: |
+          NEW_VERSION="${{ steps.bump_version.outputs.new_version }}"
+          git tag -a "${NEW_VERSION}" -m "Release ${NEW_VERSION}"
+          git push origin "${NEW_VERSION}"
+
+      - name: Create Release
+        if: steps.bump_version.outputs.new_version != ''
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ steps.bump_version.outputs.new_version }}
+          release_name: Release ${{ steps.bump_version.outputs.new_version }}
+          body: |
+            Release ${{ steps.bump_version.outputs.new_version }}
+
+            Version bump: ${{ steps.bump_version.outputs.bump_type }}
+
+            ## Changes
+            ${{ steps.get_commit_message.outputs.commit_message }}
+          draft: false
+          prerelease: false
+
+  build-binaries:
+    name: Build binaries
+    needs: create-release
+    if: needs.create-release.outputs.new_version != ''
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        goos: [linux, darwin, windows]
+        goarch: [amd64, arm64]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.create-release.outputs.new_version }}
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.25.3'
+
+      - name: Build binary
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+          CGO_ENABLED: 0
+        run: |
+          VERSION="${{ needs.create-release.outputs.new_version }}"
+          BINARY_NAME="org"
+
+          if [ "$GOOS" = "windows" ]; then
+            BINARY_NAME="org.exe"
+          fi
+
+          OUTPUT_NAME="org-${VERSION}-${GOOS}-${GOARCH}"
+          if [ "$GOOS" = "windows" ]; then
+            OUTPUT_NAME="${OUTPUT_NAME}.exe"
+          fi
+
+          echo "Building for $GOOS/$GOARCH..."
+          go build -o "${OUTPUT_NAME}" \
+            -ldflags "-s -w -X main.version=${VERSION}" \
+            ./cmd/org
+
+          echo "binary_name=${OUTPUT_NAME}" >> $GITHUB_OUTPUT
+          ls -lh "${OUTPUT_NAME}"
+        id: build
+
+      - name: Upload Release Asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.create-release.outputs.upload_url }}
+          asset_path: ./org-${{ needs.create-release.outputs.new_version }}-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.goos == 'windows' && '.exe' || '' }}
+          asset_name: org-${{ needs.create-release.outputs.new_version }}-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.goos == 'windows' && '.exe' || '' }}
+          asset_content_type: application/octet-stream
