@@ -85,6 +85,8 @@ func (m uiModel) View() string {
 		return m.viewSetPriority()
 	case modeSetEffort:
 		return m.viewSetEffort()
+	case modeHelp:
+		return m.viewHelp()
 	}
 
 	// Build footer (status + help)
@@ -419,6 +421,123 @@ func (m uiModel) viewSetEffort() string {
 
 	// Center the dialog horizontally and vertically
 	return lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center, dialog)
+}
+
+func (m uiModel) viewHelp() string {
+	// Build the full help content first
+	var lines []string
+
+	// Title
+	lines = append(lines, titleStyle.Render("Keybindings Help"))
+	lines = append(lines, "")
+
+	// Group bindings by category
+	navigationBindings := []key.Binding{m.keys.Up, m.keys.Down, m.keys.Left, m.keys.Right}
+	itemBindings := []key.Binding{m.keys.ToggleFold, m.keys.EditNotes, m.keys.CycleState}
+	taskBindings := []key.Binding{m.keys.Capture, m.keys.AddSubTask, m.keys.Delete}
+	timeBindings := []key.Binding{m.keys.ClockIn, m.keys.ClockOut, m.keys.SetDeadline, m.keys.SetEffort}
+	organizationBindings := []key.Binding{m.keys.SetPriority, m.keys.ShiftUp, m.keys.ShiftDown, m.keys.ToggleReorder}
+	viewBindings := []key.Binding{m.keys.ToggleView, m.keys.Save, m.keys.Help, m.keys.Quit}
+
+	// Helper function to render a binding
+	renderBinding := func(b key.Binding) string {
+		keyStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("99")).Bold(true)
+		descStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("245"))
+		help := b.Help()
+		return fmt.Sprintf("  %s  %s", keyStyle.Render(help.Key), descStyle.Render(help.Desc))
+	}
+
+	// Render categories
+	categoryStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("214")).Bold(true)
+
+	lines = append(lines, categoryStyle.Render("Navigation"))
+	for _, binding := range navigationBindings {
+		lines = append(lines, renderBinding(binding))
+	}
+	lines = append(lines, "")
+
+	lines = append(lines, categoryStyle.Render("Item Actions"))
+	for _, binding := range itemBindings {
+		lines = append(lines, renderBinding(binding))
+	}
+	lines = append(lines, "")
+
+	lines = append(lines, categoryStyle.Render("Task Management"))
+	for _, binding := range taskBindings {
+		lines = append(lines, renderBinding(binding))
+	}
+	lines = append(lines, "")
+
+	lines = append(lines, categoryStyle.Render("Time Tracking"))
+	for _, binding := range timeBindings {
+		lines = append(lines, renderBinding(binding))
+	}
+	lines = append(lines, "")
+
+	lines = append(lines, categoryStyle.Render("Organization"))
+	for _, binding := range organizationBindings {
+		lines = append(lines, renderBinding(binding))
+	}
+	lines = append(lines, "")
+
+	lines = append(lines, categoryStyle.Render("View & System"))
+	for _, binding := range viewBindings {
+		lines = append(lines, renderBinding(binding))
+	}
+	lines = append(lines, "")
+
+	// Calculate visible area
+	footerLines := 2 // Footer text
+	availableHeight := m.height - footerLines
+	if availableHeight < 5 {
+		availableHeight = 5
+	}
+
+	totalLines := len(lines)
+
+	// Determine which lines to show based on scroll offset
+	startLine := m.helpScroll
+	endLine := startLine + availableHeight
+	if endLine > totalLines {
+		endLine = totalLines
+	}
+	if startLine >= totalLines {
+		startLine = totalLines - 1
+		if startLine < 0 {
+			startLine = 0
+		}
+	}
+
+	// Build visible content
+	var content strings.Builder
+	for i := startLine; i < endLine && i < len(lines); i++ {
+		content.WriteString(lines[i])
+		content.WriteString("\n")
+	}
+
+	// Add scroll indicators and footer
+	var footer strings.Builder
+	if startLine > 0 || endLine < totalLines {
+		scrollInfo := fmt.Sprintf("(Scroll: %d-%d of %d lines)", startLine+1, endLine, totalLines)
+		footer.WriteString(statusStyle.Render(scrollInfo))
+		footer.WriteString(" ")
+	}
+	footer.WriteString(statusStyle.Render("↑/↓ scroll • ? or ESC to close"))
+
+	// Combine content and footer
+	var result strings.Builder
+	result.WriteString(content.String())
+
+	// Add padding if needed
+	currentHeight := lipgloss.Height(content.String())
+	paddingNeeded := availableHeight - currentHeight
+	if paddingNeeded > 0 {
+		result.WriteString(strings.Repeat("\n", paddingNeeded))
+	}
+
+	result.WriteString(footer.String())
+
+	return result.String()
 }
 
 func (m uiModel) viewEditMode() string {

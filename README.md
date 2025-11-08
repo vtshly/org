@@ -70,7 +70,7 @@ org                      # Opens ./todo.org by default
 | `p` | Set priority |
 | `e` | Set effort |
 | `r` | Toggle reorder mode |
-| `shift+↑/↓` | Move item up/down (in reorder mode) |
+| `shift+↑/↓` | Move item up/down |
 | `ctrl+s` | Save |
 | `?` | Toggle help |
 | `q` or `ctrl+c` | Quit |
@@ -89,6 +89,7 @@ Changes are automatically saved when you quit the application.
 ### Prompts
 ![capture](./.imgs/capture_prompt.png)
 ![delete](./.imgs/delete_prompt.png)
+![priority](./.imgs/priority_prompt.png)
 
 ## File Format
 

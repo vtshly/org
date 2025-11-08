@@ -22,24 +22,26 @@ const (
 	modeSetDeadline
 	modeSetPriority
 	modeSetEffort
+	modeHelp
 )
 
 type uiModel struct {
-	orgFile      *model.OrgFile
-	cursor       int
-	scrollOffset int // Track the scroll position
-	mode         viewMode
-	help         help.Model
-	keys         keyMap
-	width        int
-	height       int
-	statusMsg    string
-	statusExpiry time.Time
-	editingItem  *model.Item
-	textarea     textarea.Model
-	textinput    textinput.Model
-	itemToDelete *model.Item
-	reorderMode  bool
+	orgFile        *model.OrgFile
+	cursor         int
+	scrollOffset   int // Track the scroll position
+	helpScroll     int // Track scroll position in help mode
+	mode           viewMode
+	help           help.Model
+	keys           keyMap
+	width          int
+	height         int
+	statusMsg      string
+	statusExpiry   time.Time
+	editingItem    *model.Item
+	textarea       textarea.Model
+	textinput      textinput.Model
+	itemToDelete   *model.Item
+	reorderMode    bool
 }
 
 func initialModel(orgFile *model.OrgFile) uiModel {

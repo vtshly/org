@@ -30,6 +30,8 @@ func (m uiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m.updateSetPriority(msg)
 	case modeSetEffort:
 		return m.updateSetEffort(msg)
+	case modeHelp:
+		return m.updateHelp(msg)
 	}
 
 	switch msg := msg.(type) {
@@ -48,7 +50,8 @@ func (m uiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tea.Quit
 
 		case key.Matches(msg, m.keys.Help):
-			m.help.ShowAll = !m.help.ShowAll
+			m.mode = modeHelp
+			m.helpScroll = 0 // Reset scroll when entering help
 			return m, nil
 
 		case key.Matches(msg, m.keys.Up):
@@ -732,4 +735,42 @@ func (m *uiModel) swapItems(item1, item2 *model.Item) {
 		return false
 	}
 	swapInList(m.orgFile.Items)
+}
+
+func (m uiModel) updateHelp(msg tea.Msg) (tea.Model, tea.Cmd) {
+	switch msg := msg.(type) {
+	case tea.WindowSizeMsg:
+		m.width = msg.Width
+		m.height = msg.Height
+
+	case tea.KeyMsg:
+		switch msg.String() {
+		case "?", "esc", "q":
+			m.mode = modeList
+			m.helpScroll = 0 // Reset scroll when exiting
+			return m, nil
+		case "up", "k":
+			if m.helpScroll > 0 {
+				m.helpScroll--
+			}
+			return m, nil
+		case "down", "j":
+			m.helpScroll++
+			// The view will handle clamping to max scroll
+			return m, nil
+		case "pageup":
+			m.helpScroll -= 10
+			if m.helpScroll < 0 {
+				m.helpScroll = 0
+			}
+			return m, nil
+		case "pagedown":
+			m.helpScroll += 10
+			return m, nil
+		case "home", "g":
+			m.helpScroll = 0
+			return m, nil
+		}
+	}
+	return m, nil
 }
