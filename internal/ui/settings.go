@@ -18,17 +18,6 @@ const (
 	settingsSectionKeybindings
 )
 
-// settingsState tracks the state of the settings editor
-type settingsState struct {
-	section       settingsSection
-	cursor        int
-	scroll        int
-	editing       bool
-	editingField  string
-	editingValue  string
-	modified      bool
-}
-
 // initSettings initializes the settings state
 func (m *uiModel) initSettings() {
 	m.settingsCursor = 0
@@ -42,7 +31,7 @@ func (m *uiModel) updateSettings(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// If editing, handle text input
 		if m.textinput.Focused() {
 			switch {
-			case key.Matches(msg, m.keys.Quit):
+			case msg.Type == tea.KeyEsc:
 				m.textinput.Blur()
 				return m, nil
 			case msg.Type == tea.KeyEnter:
@@ -439,11 +428,11 @@ func (m *uiModel) viewSettings() string {
 	var instructions string
 	switch m.settingsSection {
 	case settingsSectionTags:
-		instructions = "←/→: Switch tabs • ↑/↓: Navigate • Enter: Edit • D: Delete • c: Add new tag • ctrl+s: Save • q/,: Exit"
+		instructions = "←/→: Switch tabs • ↑/↓: Navigate • Enter: Edit • D: Delete\nc: Add new tag • ctrl+s: Save • q/,: Exit"
 	case settingsSectionStates:
-		instructions = "←/→: Switch tabs • ↑/↓: Navigate • shift+↑/↓: Reorder • Enter: Edit • D: Delete • c: Add new state • ctrl+s: Save • q/,: Exit"
+		instructions = "←/→: Switch tabs • ↑/↓: Navigate • shift+↑/↓: Reorder • Enter: Edit\nD: Delete • c: Add new state • ctrl+s: Save • q/,: Exit"
 	case settingsSectionKeybindings:
-		instructions = "←/→: Switch tabs • ↑/↓: Navigate • Enter: Edit keybinding • ctrl+s: Save • q/,: Exit"
+		instructions = "←/→: Switch tabs • ↑/↓: Navigate • Enter: Edit keybinding\nctrl+s: Save • q/,: Exit"
 	}
 	content.WriteString(m.styles.statusStyle.Render(instructions) + "\n\n")
 
@@ -461,7 +450,7 @@ func (m *uiModel) viewSettings() string {
 	if m.textinput.Focused() {
 		content.WriteString("\n")
 		content.WriteString(m.textinput.View() + "\n")
-		content.WriteString(m.styles.statusStyle.Render("Enter: Save • ESC/q: Cancel") + "\n")
+		content.WriteString(m.styles.statusStyle.Render("Enter: Save • ESC: Cancel") + "\n")
 	}
 
 	return content.String()
@@ -535,7 +524,7 @@ func (m *uiModel) viewSettingsStates() string {
 
 		// State name with its color
 		stateStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(state.Color))
-		line += stateStyle.Render(fmt.Sprintf("%s", state.Name))
+		line += stateStyle.Render(state.Name)
 		line += fmt.Sprintf(" (color: %s)", state.Color)
 
 		content.WriteString(line + "\n")
@@ -613,7 +602,7 @@ func (m *uiModel) updateSettingsAddTag(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 		switch {
-		case key.Matches(msg, m.keys.Quit):
+		case msg.Type == tea.KeyEsc:
 			m.textinput.Blur()
 			m.mode = modeSettings
 			return m, nil
@@ -664,7 +653,7 @@ func (m *uiModel) updateSettingsAddState(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 		switch {
-		case key.Matches(msg, m.keys.Quit):
+		case msg.Type == tea.KeyEsc:
 			m.textinput.Blur()
 			m.mode = modeSettings
 			return m, nil

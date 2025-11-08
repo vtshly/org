@@ -32,9 +32,6 @@ func (d dynamicKeyMap) FullHelp() [][]key.Binding {
 func (m uiModel) renderFullHelp() string {
 	bindings := m.keys.getAllBindings()
 
-	// Estimate the width needed for each keybinding (key + desc + padding)
-	// Average is roughly 20-25 chars per binding
-	const estimatedBindingWidth = 22
 	const minWidth = 40 // Minimum width before stacking
 
 	var columnsPerRow int
