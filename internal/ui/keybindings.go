@@ -23,6 +23,8 @@ type keyMap struct {
 	ClockIn       key.Binding
 	ClockOut      key.Binding
 	SetDeadline   key.Binding
+	SetPriority   key.Binding
+	SetEffort     key.Binding
 }
 
 var keys = keyMap{
@@ -75,8 +77,8 @@ var keys = keyMap{
 		key.WithHelp("s", "add sub-task"),
 	),
 	Delete: key.NewBinding(
-		key.WithKeys("shift+d"),
-		key.WithHelp("shift+d", "delete item"),
+		key.WithKeys("D"),
+		key.WithHelp("D", "delete item"),
 	),
 	Save: key.NewBinding(
 		key.WithKeys("ctrl+s"),
@@ -97,6 +99,14 @@ var keys = keyMap{
 	SetDeadline: key.NewBinding(
 		key.WithKeys("d"),
 		key.WithHelp("d", "set deadline"),
+	),
+	SetPriority: key.NewBinding(
+		key.WithKeys("p"),
+		key.WithHelp("p", "set priority"),
+	),
+	SetEffort: key.NewBinding(
+		key.WithKeys("e"),
+		key.WithHelp("e", "set effort"),
 	),
 	Help: key.NewBinding(
 		key.WithKeys("?"),
@@ -128,7 +138,7 @@ func (k keyMap) getAllBindings() []key.Binding {
 		k.Up, k.Down, k.Left, k.Right,
 		k.ToggleFold, k.EditNotes, k.ToggleReorder,
 		k.Capture, k.AddSubTask, k.Delete, k.Save,
-		k.ClockIn, k.ClockOut, k.SetDeadline,
+		k.ClockIn, k.ClockOut, k.SetDeadline, k.SetPriority, k.SetEffort,
 		k.ToggleView, k.Help, k.Quit,
 	}
 }

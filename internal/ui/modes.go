@@ -26,6 +26,10 @@ func (m uiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m.updateAddSubTask(msg)
 	case modeSetDeadline:
 		return m.updateSetDeadline(msg)
+	case modeSetPriority:
+		return m.updateSetPriority(msg)
+	case modeSetEffort:
+		return m.updateSetEffort(msg)
 	}
 
 	switch msg := msg.(type) {
@@ -35,6 +39,7 @@ func (m uiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.help.Width = msg.Width
 		m.textarea.SetWidth(msg.Width - 4)
 		m.textarea.SetHeight(msg.Height - 10)
+		m.textinput.Width = 50 // Set a reasonable width for the text input
 		return m, nil
 
 	case tea.KeyMsg:
@@ -52,6 +57,12 @@ func (m uiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			} else {
 				if m.cursor > 0 {
 					m.cursor--
+					// Update scroll to keep cursor visible
+					availableHeight := m.height - 6 // Approximate
+					if availableHeight < 5 {
+						availableHeight = 5
+					}
+					m.updateScrollOffset(availableHeight)
 				}
 			}
 
@@ -62,6 +73,12 @@ func (m uiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				items := m.getVisibleItems()
 				if m.cursor < len(items)-1 {
 					m.cursor++
+					// Update scroll to keep cursor visible
+					availableHeight := m.height - 6 // Approximate
+					if availableHeight < 5 {
+						availableHeight = 5
+					}
+					m.updateScrollOffset(availableHeight)
 				}
 			}
 
@@ -203,6 +220,25 @@ func (m uiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.textinput.Focus()
 				return m, textinput.Blink
 			}
+
+		case key.Matches(msg, m.keys.SetPriority):
+			items := m.getVisibleItems()
+			if len(items) > 0 && m.cursor < len(items) {
+				m.editingItem = items[m.cursor]
+				m.mode = modeSetPriority
+				return m, nil
+			}
+
+		case key.Matches(msg, m.keys.SetEffort):
+			items := m.getVisibleItems()
+			if len(items) > 0 && m.cursor < len(items) {
+				m.editingItem = items[m.cursor]
+				m.mode = modeSetEffort
+				m.textinput.SetValue("")
+				m.textinput.Placeholder = "e.g., 8h, 2d, 1w"
+				m.textinput.Focus()
+				return m, textinput.Blink
+			}
 		}
 	}
 
@@ -273,6 +309,7 @@ func (m uiModel) updateCapture(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
+		m.textinput.Width = 50
 
 	case tea.KeyMsg:
 		switch msg.Type {
@@ -314,6 +351,7 @@ func (m uiModel) updateAddSubTask(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
+		m.textinput.Width = 50
 
 	case tea.KeyMsg:
 		switch msg.Type {
@@ -356,6 +394,7 @@ func (m uiModel) updateSetDeadline(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
+		m.textinput.Width = 50
 
 	case tea.KeyMsg:
 		switch msg.Type {
@@ -453,6 +492,98 @@ func parseDeadlineInput(input string) (time.Time, error) {
 	return time.Time{}, fmt.Errorf("unable to parse date: %s (use YYYY-MM-DD or +N)", input)
 }
 
+func (m uiModel) updateSetPriority(msg tea.Msg) (tea.Model, tea.Cmd) {
+	switch msg := msg.(type) {
+	case tea.WindowSizeMsg:
+		m.width = msg.Width
+		m.height = msg.Height
+
+	case tea.KeyMsg:
+		switch msg.String() {
+		case "A", "a":
+			if m.editingItem != nil {
+				m.editingItem.Priority = model.PriorityA
+				m.setStatus("Priority set to A")
+			}
+			m.mode = modeList
+			m.editingItem = nil
+			return m, nil
+		case "B", "b":
+			if m.editingItem != nil {
+				m.editingItem.Priority = model.PriorityB
+				m.setStatus("Priority set to B")
+			}
+			m.mode = modeList
+			m.editingItem = nil
+			return m, nil
+		case "C", "c":
+			if m.editingItem != nil {
+				m.editingItem.Priority = model.PriorityC
+				m.setStatus("Priority set to C")
+			}
+			m.mode = modeList
+			m.editingItem = nil
+			return m, nil
+		case " ", "enter":
+			// Clear priority
+			if m.editingItem != nil {
+				m.editingItem.Priority = model.PriorityNone
+				m.setStatus("Priority cleared")
+			}
+			m.mode = modeList
+			m.editingItem = nil
+			return m, nil
+		case "esc":
+			m.mode = modeList
+			m.editingItem = nil
+			m.setStatus("Cancelled")
+			return m, nil
+		}
+	}
+	return m, nil
+}
+
+func (m uiModel) updateSetEffort(msg tea.Msg) (tea.Model, tea.Cmd) {
+	var cmd tea.Cmd
+
+	switch msg := msg.(type) {
+	case tea.WindowSizeMsg:
+		m.width = msg.Width
+		m.height = msg.Height
+		m.textinput.Width = 50
+
+	case tea.KeyMsg:
+		switch msg.Type {
+		case tea.KeyEnter:
+			input := strings.TrimSpace(m.textinput.Value())
+			if m.editingItem != nil {
+				if input == "" {
+					// Empty input clears the effort
+					m.editingItem.Effort = ""
+					m.setStatus("Effort cleared!")
+				} else {
+					// Set the effort value
+					m.editingItem.Effort = input
+					m.setStatus("Effort set!")
+				}
+			}
+			m.mode = modeList
+			m.textinput.Blur()
+			m.editingItem = nil
+			return m, nil
+		case tea.KeyEsc:
+			m.mode = modeList
+			m.textinput.Blur()
+			m.editingItem = nil
+			m.setStatus("Cancelled")
+			return m, nil
+		}
+	}
+
+	m.textinput, cmd = m.textinput.Update(msg)
+	return m, cmd
+}
+
 func (m *uiModel) cycleStateBackward(item *model.Item) {
 	switch item.State {
 	case model.StateNone:
@@ -491,17 +622,25 @@ func (m *uiModel) moveItemUp() {
 	}
 
 	currentItem := items[m.cursor]
-	prevItem := items[m.cursor-1]
 
-	// Can only swap items at the same level
-	if currentItem.Level != prevItem.Level {
-		m.setStatus("Cannot move across different levels")
+	// Find the previous sibling (not child, not parent's sibling)
+	prevSibling := m.findPreviousSibling(currentItem)
+	if prevSibling == nil {
+		m.setStatus("Cannot move - already at top of list")
 		return
 	}
 
-	m.swapItems(currentItem, prevItem)
-	m.cursor--
+	m.swapItems(currentItem, prevSibling)
 	m.setStatus("Item moved up")
+
+	// Update cursor to follow the item
+	items = m.getVisibleItems()
+	for i, item := range items {
+		if item == currentItem {
+			m.cursor = i
+			break
+		}
+	}
 }
 
 func (m *uiModel) moveItemDown() {
@@ -511,17 +650,63 @@ func (m *uiModel) moveItemDown() {
 	}
 
 	currentItem := items[m.cursor]
-	nextItem := items[m.cursor+1]
 
-	// Can only swap items at the same level
-	if currentItem.Level != nextItem.Level {
-		m.setStatus("Cannot move across different levels")
+	// Find the next sibling (not child, not parent's sibling)
+	nextSibling := m.findNextSibling(currentItem)
+	if nextSibling == nil {
+		m.setStatus("Cannot move - already at bottom of list")
 		return
 	}
 
-	m.swapItems(currentItem, nextItem)
-	m.cursor++
+	m.swapItems(currentItem, nextSibling)
 	m.setStatus("Item moved down")
+
+	// Update cursor to follow the item
+	items = m.getVisibleItems()
+	for i, item := range items {
+		if item == currentItem {
+			m.cursor = i
+			break
+		}
+	}
+}
+
+func (m *uiModel) findPreviousSibling(item *model.Item) *model.Item {
+	// Find the parent list containing this item and return the previous sibling
+	var findInList func([]*model.Item) *model.Item
+	findInList = func(items []*model.Item) *model.Item {
+		for i, it := range items {
+			if it == item && i > 0 {
+				// Found the item and there's a previous sibling
+				return items[i-1]
+			}
+			// Recursively check children
+			if result := findInList(it.Children); result != nil {
+				return result
+			}
+		}
+		return nil
+	}
+	return findInList(m.orgFile.Items)
+}
+
+func (m *uiModel) findNextSibling(item *model.Item) *model.Item {
+	// Find the parent list containing this item and return the next sibling
+	var findInList func([]*model.Item) *model.Item
+	findInList = func(items []*model.Item) *model.Item {
+		for i, it := range items {
+			if it == item && i < len(items)-1 {
+				// Found the item and there's a next sibling
+				return items[i+1]
+			}
+			// Recursively check children
+			if result := findInList(it.Children); result != nil {
+				return result
+			}
+		}
+		return nil
+	}
+	return findInList(m.orgFile.Items)
 }
 
 func (m *uiModel) swapItems(item1, item2 *model.Item) {

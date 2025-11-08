@@ -2,13 +2,25 @@ package model
 
 import "time"
 
+// Priority represents org-mode priority levels
+type Priority string
+
+const (
+	PriorityNone Priority = ""
+	PriorityA    Priority = "A"
+	PriorityB    Priority = "B"
+	PriorityC    Priority = "C"
+)
+
 // Item represents a single org-mode item (heading)
 type Item struct {
 	Level        int          // Heading level (number of *)
 	State        TodoState    // TODO, PROG, BLOCK, DONE, or empty
+	Priority     Priority     // Priority: A, B, C, or empty
 	Title        string       // The main title text
 	Scheduled    *time.Time
 	Deadline     *time.Time
+	Effort       string       // Effort estimate (e.g., "8h", "2d")
 	Notes        []string     // Notes/content under the heading
 	Children     []*Item      // Sub-items
 	Folded       bool         // Whether the item is folded (hides notes and children)

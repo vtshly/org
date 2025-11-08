@@ -20,11 +20,14 @@ const (
 	modeCapture
 	modeAddSubTask
 	modeSetDeadline
+	modeSetPriority
+	modeSetEffort
 )
 
 type uiModel struct {
 	orgFile      *model.OrgFile
 	cursor       int
+	scrollOffset int // Track the scroll position
 	mode         viewMode
 	help         help.Model
 	keys         keyMap
@@ -76,6 +79,44 @@ func (m uiModel) getVisibleItems() []*model.Item {
 		return m.getAgendaItems()
 	}
 	return m.orgFile.GetAllItems()
+}
+
+func (m *uiModel) updateScrollOffset(availableHeight int) {
+	items := m.getVisibleItems()
+	if len(items) == 0 {
+		return
+	}
+
+	// Build line count for each item
+	itemLineCount := make([]int, len(items))
+	for i, item := range items {
+		lineCount := 1 // The item itself
+		if !item.Folded && len(item.Notes) > 0 && m.mode == modeList {
+			// Count note lines (simplified - just count notes)
+			lineCount += len(item.Notes)
+		}
+		itemLineCount[i] = lineCount
+	}
+
+	// Calculate total lines up to cursor
+	totalLinesBeforeCursor := 0
+	for i := 0; i < m.cursor && i < len(itemLineCount); i++ {
+		totalLinesBeforeCursor += itemLineCount[i]
+	}
+
+	// Adjust scroll offset to keep cursor visible
+	if totalLinesBeforeCursor < m.scrollOffset {
+		// Cursor is above visible area, scroll up
+		m.scrollOffset = totalLinesBeforeCursor
+	} else if totalLinesBeforeCursor >= m.scrollOffset+availableHeight {
+		// Cursor is below visible area, scroll down
+		m.scrollOffset = totalLinesBeforeCursor - availableHeight + 1
+	}
+
+	// Ensure scroll offset doesn't go negative
+	if m.scrollOffset < 0 {
+		m.scrollOffset = 0
+	}
 }
 
 // RunUI starts the terminal UI

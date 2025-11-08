@@ -37,6 +37,9 @@ func writeItem(writer *bufio.Writer, item *model.Item) error {
 	if item.State != model.StateNone {
 		line += " " + string(item.State)
 	}
+	if item.Priority != model.PriorityNone {
+		line += " [#" + string(item.Priority) + "]"
+	}
 	line += " " + item.Title + "\n"
 
 	if _, err := writer.WriteString(line); err != nil {
@@ -47,6 +50,7 @@ func writeItem(writer *bufio.Writer, item *model.Item) error {
 	hasScheduled := false
 	hasDeadline := false
 	hasLogbook := false
+	hasProperties := false
 	for _, note := range item.Notes {
 		if strings.Contains(note, "SCHEDULED:") {
 			hasScheduled = true
@@ -56,6 +60,9 @@ func writeItem(writer *bufio.Writer, item *model.Item) error {
 		}
 		if strings.Contains(note, ":LOGBOOK:") {
 			hasLogbook = true
+		}
+		if strings.Contains(note, ":PROPERTIES:") {
+			hasProperties = true
 		}
 	}
 
@@ -69,6 +76,20 @@ func writeItem(writer *bufio.Writer, item *model.Item) error {
 	if item.Deadline != nil && !hasDeadline {
 		deadlineLine := fmt.Sprintf("DEADLINE: <%s>\n", FormatOrgDate(*item.Deadline))
 		if _, err := writer.WriteString(deadlineLine); err != nil {
+			return err
+		}
+	}
+
+	// Write effort in :PROPERTIES: drawer if not already in notes
+	if item.Effort != "" && !hasProperties {
+		if _, err := writer.WriteString(":PROPERTIES:\n"); err != nil {
+			return err
+		}
+		effortLine := fmt.Sprintf(":EFFORT: %s\n", item.Effort)
+		if _, err := writer.WriteString(effortLine); err != nil {
+			return err
+		}
+		if _, err := writer.WriteString(":END:\n"); err != nil {
 			return err
 		}
 	}

@@ -81,6 +81,10 @@ func (m uiModel) View() string {
 		return m.viewAddSubTask()
 	case modeSetDeadline:
 		return m.viewSetDeadline()
+	case modeSetPriority:
+		return m.viewSetPriority()
+	case modeSetEffort:
+		return m.viewSetEffort()
 	}
 
 	// Build footer (status + help)
@@ -130,12 +134,84 @@ func (m uiModel) View() string {
 		content.WriteString("No items. Press 'c' to capture a new TODO.\n")
 	}
 
+	// Build a map of item index to line count (for scrolling)
+	itemLineCount := make([]int, len(items))
+	for i, item := range items {
+		lineCount := 1 // The item itself
+		if !item.Folded && len(item.Notes) > 0 && m.mode == modeList {
+			filteredNotes := filterLogbookDrawer(item.Notes)
+			highlightedNotes := renderNotesWithHighlighting(filteredNotes)
+			lineCount += len(highlightedNotes)
+		}
+		itemLineCount[i] = lineCount
+	}
+
+	// Calculate total lines up to cursor
+	totalLinesBeforeCursor := 0
+	for i := 0; i < m.cursor && i < len(itemLineCount); i++ {
+		totalLinesBeforeCursor += itemLineCount[i]
+	}
+
+	// Determine the scroll offset (without modifying m - View should be pure)
+	scrollOffset := m.scrollOffset
+	if totalLinesBeforeCursor < scrollOffset {
+		// Cursor is above visible area, scroll up
+		scrollOffset = totalLinesBeforeCursor
+	} else if totalLinesBeforeCursor >= scrollOffset+availableHeight {
+		// Cursor is below visible area, scroll down
+		scrollOffset = totalLinesBeforeCursor - availableHeight + 1
+	}
+
+	// Render items starting from scroll offset
 	itemLines := 0
 	for i, item := range items {
-		if itemLines >= availableHeight {
-			break // Don't render more items than fit
+		// Calculate which line this item starts at
+		itemStartLine := 0
+		for j := 0; j < i; j++ {
+			itemStartLine += itemLineCount[j]
 		}
 
+		// Skip items before scroll offset
+		if itemStartLine+itemLineCount[i] <= scrollOffset {
+			continue
+		}
+
+		// Stop if we've filled the screen
+		if itemLines >= availableHeight {
+			break
+		}
+
+		// Skip partial items at the top if needed
+		if itemStartLine < scrollOffset {
+			// This item is partially scrolled off the top
+			linesToSkip := scrollOffset - itemStartLine
+			if linesToSkip < itemLineCount[i] {
+				// Render the visible parts
+				if linesToSkip == 0 {
+					line := m.renderItem(item, i == m.cursor)
+					content.WriteString(line)
+					content.WriteString("\n")
+					itemLines++
+					linesToSkip++
+				}
+
+				// Render remaining notes
+				if !item.Folded && len(item.Notes) > 0 && m.mode == modeList {
+					indent := strings.Repeat("  ", item.Level)
+					filteredNotes := filterLogbookDrawer(item.Notes)
+					highlightedNotes := renderNotesWithHighlighting(filteredNotes)
+					for noteIdx := linesToSkip - 1; noteIdx < len(highlightedNotes) && itemLines < availableHeight; noteIdx++ {
+						content.WriteString(indent)
+						content.WriteString("  " + highlightedNotes[noteIdx])
+						content.WriteString("\n")
+						itemLines++
+					}
+				}
+			}
+			continue
+		}
+
+		// Render the full item
 		line := m.renderItem(item, i == m.cursor)
 		content.WriteString(line)
 		content.WriteString("\n")
@@ -144,7 +220,6 @@ func (m uiModel) View() string {
 		// Show notes if not folded
 		if !item.Folded && len(item.Notes) > 0 && m.mode == modeList {
 			indent := strings.Repeat("  ", item.Level)
-			// Filter out LOGBOOK drawer and apply syntax highlighting to notes
 			filteredNotes := filterLogbookDrawer(item.Notes)
 			highlightedNotes := renderNotesWithHighlighting(filteredNotes)
 			for _, note := range highlightedNotes {
@@ -177,8 +252,6 @@ func (m uiModel) View() string {
 }
 
 func (m uiModel) viewConfirmDelete() string {
-	var b strings.Builder
-
 	dialogStyle := lipgloss.NewStyle().
 		Border(lipgloss.RoundedBorder()).
 		BorderForeground(lipgloss.Color("196")).
@@ -202,21 +275,11 @@ func (m uiModel) viewConfirmDelete() string {
 
 	dialog := dialogStyle.Render(content.String())
 
-	// Center the dialog
-	if m.height > 0 {
-		verticalPadding := (m.height - lipgloss.Height(dialog)) / 2
-		if verticalPadding > 0 {
-			b.WriteString(strings.Repeat("\n", verticalPadding))
-		}
-	}
-	b.WriteString(dialog)
-
-	return b.String()
+	// Center the dialog horizontally and vertically
+	return lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center, dialog)
 }
 
 func (m uiModel) viewCapture() string {
-	var b strings.Builder
-
 	dialogStyle := lipgloss.NewStyle().
 		Border(lipgloss.RoundedBorder()).
 		BorderForeground(lipgloss.Color("99")).
@@ -232,21 +295,11 @@ func (m uiModel) viewCapture() string {
 
 	dialog := dialogStyle.Render(content.String())
 
-	// Center the dialog
-	if m.height > 0 {
-		verticalPadding := (m.height - lipgloss.Height(dialog)) / 2
-		if verticalPadding > 0 {
-			b.WriteString(strings.Repeat("\n", verticalPadding))
-		}
-	}
-	b.WriteString(dialog)
-
-	return b.String()
+	// Center the dialog horizontally and vertically
+	return lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center, dialog)
 }
 
 func (m uiModel) viewAddSubTask() string {
-	var b strings.Builder
-
 	dialogStyle := lipgloss.NewStyle().
 		Border(lipgloss.RoundedBorder()).
 		BorderForeground(lipgloss.Color("99")).
@@ -266,21 +319,11 @@ func (m uiModel) viewAddSubTask() string {
 
 	dialog := dialogStyle.Render(content.String())
 
-	// Center the dialog
-	if m.height > 0 {
-		verticalPadding := (m.height - lipgloss.Height(dialog)) / 2
-		if verticalPadding > 0 {
-			b.WriteString(strings.Repeat("\n", verticalPadding))
-		}
-	}
-	b.WriteString(dialog)
-
-	return b.String()
+	// Center the dialog horizontally and vertically
+	return lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center, dialog)
 }
 
 func (m uiModel) viewSetDeadline() string {
-	var b strings.Builder
-
 	dialogStyle := lipgloss.NewStyle().
 		Border(lipgloss.RoundedBorder()).
 		BorderForeground(lipgloss.Color("141")).
@@ -304,16 +347,78 @@ func (m uiModel) viewSetDeadline() string {
 
 	dialog := dialogStyle.Render(content.String())
 
-	// Center the dialog
-	if m.height > 0 {
-		verticalPadding := (m.height - lipgloss.Height(dialog)) / 2
-		if verticalPadding > 0 {
-			b.WriteString(strings.Repeat("\n", verticalPadding))
+	// Center the dialog horizontally and vertically
+	return lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center, dialog)
+}
+
+func (m uiModel) viewSetPriority() string {
+	dialogStyle := lipgloss.NewStyle().
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(lipgloss.Color("214")).
+		Padding(1, 2).
+		Width(60)
+
+	var content strings.Builder
+	content.WriteString(titleStyle.Render("Set Priority"))
+	content.WriteString("\n")
+	if m.editingItem != nil {
+		content.WriteString(statusStyle.Render(fmt.Sprintf("For: %s", m.editingItem.Title)))
+		content.WriteString("\n")
+		if m.editingItem.Priority != model.PriorityNone {
+			content.WriteString(statusStyle.Render(fmt.Sprintf("Current: [#%s]", m.editingItem.Priority)))
 		}
 	}
-	b.WriteString(dialog)
+	content.WriteString("\n\n")
 
-	return b.String()
+	// Show priority options with styling
+	priorityAStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("196")).Bold(true)
+	priorityBStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("214")).Bold(true)
+	priorityCStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("226")).Bold(true)
+
+	content.WriteString(priorityAStyle.Render("[A] High Priority") + "\n")
+	content.WriteString(priorityBStyle.Render("[B] Medium Priority") + "\n")
+	content.WriteString(priorityCStyle.Render("[C] Low Priority") + "\n")
+	content.WriteString("\n")
+	content.WriteString(statusStyle.Render("Press Space/Enter to clear priority"))
+	content.WriteString("\n")
+	content.WriteString(statusStyle.Render("Press ESC to cancel"))
+
+	dialog := dialogStyle.Render(content.String())
+
+	// Center the dialog horizontally and vertically
+	return lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center, dialog)
+}
+
+func (m uiModel) viewSetEffort() string {
+	dialogStyle := lipgloss.NewStyle().
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(lipgloss.Color("141")).
+		Padding(1, 2).
+		Width(60)
+
+	var content strings.Builder
+	content.WriteString(titleStyle.Render("Set Effort"))
+	content.WriteString("\n")
+	if m.editingItem != nil {
+		content.WriteString(statusStyle.Render(fmt.Sprintf("For: %s", m.editingItem.Title)))
+		content.WriteString("\n")
+		if m.editingItem.Effort != "" {
+			content.WriteString(statusStyle.Render(fmt.Sprintf("Current: %s", m.editingItem.Effort)))
+		}
+	}
+	content.WriteString("\n\n")
+	content.WriteString(m.textinput.View())
+	content.WriteString("\n\n")
+	content.WriteString(statusStyle.Render("Examples: 8h, 2d, 1w, 4h30m"))
+	content.WriteString("\n")
+	content.WriteString(statusStyle.Render("Leave empty to clear effort"))
+	content.WriteString("\n")
+	content.WriteString(statusStyle.Render("Press Enter to save • ESC to cancel"))
+
+	dialog := dialogStyle.Render(content.String())
+
+	// Center the dialog horizontally and vertically
+	return lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center, dialog)
 }
 
 func (m uiModel) viewEditMode() string {
@@ -332,10 +437,11 @@ func (m uiModel) viewEditMode() string {
 	return b.String()
 }
 
-// filterLogbookDrawer removes LOGBOOK drawer content and scheduling metadata from notes
+// filterLogbookDrawer removes LOGBOOK and PROPERTIES drawer content and scheduling metadata from notes
 func filterLogbookDrawer(notes []string) []string {
 	var filtered []string
 	inLogbook := false
+	inProperties := false
 
 	for _, note := range notes {
 		trimmed := strings.TrimSpace(note)
@@ -346,14 +452,26 @@ func filterLogbookDrawer(notes []string) []string {
 			continue
 		}
 
-		// Check for end of LOGBOOK drawer
-		if trimmed == ":END:" && inLogbook {
-			inLogbook = false
+		// Check for start of PROPERTIES drawer
+		if trimmed == ":PROPERTIES:" {
+			inProperties = true
 			continue
 		}
 
-		// Skip lines inside LOGBOOK drawer
-		if inLogbook {
+		// Check for end of drawer
+		if trimmed == ":END:" {
+			if inLogbook {
+				inLogbook = false
+				continue
+			}
+			if inProperties {
+				inProperties = false
+				continue
+			}
+		}
+
+		// Skip lines inside LOGBOOK or PROPERTIES drawer
+		if inLogbook || inProperties {
 			continue
 		}
 
@@ -517,8 +635,29 @@ func (m uiModel) renderItem(item *model.Item, isCursor bool) string {
 	b.WriteString(stateStr)
 	b.WriteString(" ")
 
+	// Priority
+	if item.Priority != model.PriorityNone {
+		var priorityStyle lipgloss.Style
+		switch item.Priority {
+		case model.PriorityA:
+			priorityStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("196")).Bold(true)
+		case model.PriorityB:
+			priorityStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("214")).Bold(true)
+		case model.PriorityC:
+			priorityStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("226")).Bold(true)
+		}
+		b.WriteString(priorityStyle.Render(fmt.Sprintf("[#%s] ", item.Priority)))
+	}
+
 	// Title
 	b.WriteString(item.Title)
+
+	// Effort
+	if item.Effort != "" {
+		effortStr := fmt.Sprintf(" (Effort: %s)", item.Effort)
+		effortStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("141")) // Purple
+		b.WriteString(effortStyle.Render(effortStr))
+	}
 
 	// Clock status
 	if item.IsClockedIn() {
