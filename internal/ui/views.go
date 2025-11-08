@@ -622,15 +622,15 @@ func (m uiModel) renderItem(item *model.Item, isCursor bool) string {
 	stateStr := ""
 	switch item.State {
 	case model.StateTODO:
-		stateStr = todoStyle.Render("[TODO] ")
+		stateStr = todoStyle.Render("[TODO]")
 	case model.StatePROG:
-		stateStr = progStyle.Render("[PROG] ")
+		stateStr = progStyle.Render("[PROG]")
 	case model.StateBLOCK:
 		stateStr = blockStyle.Render("[BLOCK]")
 	case model.StateDONE:
-		stateStr = doneStyle.Render("[DONE] ")
+		stateStr = doneStyle.Render("[DONE]")
 	default:
-		stateStr = "       " // Empty space for alignment
+		stateStr = "" // Empty space for alignment
 	}
 	b.WriteString(stateStr)
 	b.WriteString(" ")
