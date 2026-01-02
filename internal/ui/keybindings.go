@@ -12,6 +12,8 @@ type keyMap struct {
 	Down          key.Binding
 	Left          key.Binding
 	Right         key.Binding
+	GoToTop       key.Binding
+	GoToBottom    key.Binding
 	ShiftUp       key.Binding
 	ShiftDown     key.Binding
 	ShiftLeft     key.Binding
@@ -49,6 +51,14 @@ func newKeyMapFromConfig(cfg *config.Config) keyMap {
 		Down: key.NewBinding(
 			key.WithKeys(kb.Down...),
 			key.WithHelp(formatKeyHelp(kb.Down), "move down"),
+		),
+		GoToTop: key.NewBinding(
+			key.WithKeys(kb.GoToTop...),
+			key.WithHelp(formatKeyHelp(kb.GoToTop), "go to top"),
+		),
+		GoToBottom: key.NewBinding(
+			key.WithKeys(kb.GoToBottom...),
+			key.WithHelp(formatKeyHelp(kb.GoToBottom), "go to bottom"),
 		),
 		Left: key.NewBinding(
 			key.WithKeys(kb.Left...),
@@ -193,6 +203,7 @@ func (k keyMap) FullHelp() [][]key.Binding {
 func (k keyMap) getAllBindings() []key.Binding {
 	return []key.Binding{
 		k.Up, k.Down, k.Left, k.Right,
+		k.GoToTop, k.GoToBottom,
 		k.ToggleFold, k.EditNotes, k.ToggleReorder,
 		k.Capture, k.AddSubTask, k.Delete, k.Save,
 		k.ClockIn, k.ClockOut, k.SetDeadline, k.SetPriority, k.SetEffort,

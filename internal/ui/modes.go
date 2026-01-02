@@ -95,6 +95,23 @@ func (m uiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			}
 
+		case key.Matches(msg, m.keys.GoToTop):
+			m.cursor = 0
+			// Scroll to top
+			m.scrollOffset = 0
+
+		case key.Matches(msg, m.keys.GoToBottom):
+			items := m.getVisibleItems()
+			if len(items) > 0 {
+				m.cursor = len(items) - 1
+				// Update scroll to keep cursor visible
+				availableHeight := m.height - 6 // Approximate
+				if availableHeight < 5 {
+					availableHeight = 5
+				}
+				m.updateScrollOffset(availableHeight)
+			}
+
 		case key.Matches(msg, m.keys.Left):
 			items := m.getVisibleItems()
 			if len(items) > 0 && m.cursor < len(items) {

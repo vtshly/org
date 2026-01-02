@@ -24,6 +24,8 @@ type KeybindingsConfig struct {
 	Down          []string `toml:"down"`
 	Left          []string `toml:"left"`
 	Right         []string `toml:"right"`
+	GoToTop       []string `toml:"go_to_top"`
+	GoToBottom    []string `toml:"go_to_bottom"`
 	ShiftUp       []string `toml:"shift_up"`
 	ShiftDown     []string `toml:"shift_down"`
 	ShiftLeft     []string `toml:"shift_left"`
@@ -107,6 +109,8 @@ func DefaultConfig() *Config {
 			Down:          []string{"down", "j"},
 			Left:          []string{"left", "h"},
 			Right:         []string{"right", "l"},
+			GoToTop:       []string{"g"},
+			GoToBottom:    []string{"G"},
 			ShiftUp:       []string{"shift+up"},
 			ShiftDown:     []string{"shift+down"},
 			ShiftLeft:     []string{"shift+left"},
@@ -260,6 +264,12 @@ func (c *Config) fillDefaults() {
 	}
 	if len(c.Keybindings.Right) == 0 {
 		c.Keybindings.Right = defaults.Keybindings.Right
+	}
+	if len(c.Keybindings.GoToTop) == 0 {
+		c.Keybindings.GoToTop = defaults.Keybindings.GoToTop
+	}
+	if len(c.Keybindings.GoToBottom) == 0 {
+		c.Keybindings.GoToBottom = defaults.Keybindings.GoToBottom
 	}
 	if len(c.Keybindings.ShiftUp) == 0 {
 		c.Keybindings.ShiftUp = defaults.Keybindings.ShiftUp
@@ -513,6 +523,10 @@ func (c *Config) UpdateKeybinding(action string, keys []string) error {
 		c.Keybindings.Left = keys
 	case "right":
 		c.Keybindings.Right = keys
+	case "go_to_top":
+		c.Keybindings.GoToTop = keys
+	case "go_to_bottom":
+		c.Keybindings.GoToBottom = keys
 	case "cycle_state":
 		c.Keybindings.CycleState = keys
 	case "toggle_fold":
@@ -550,6 +564,8 @@ func (c *Config) GetAllKeybindings() map[string][]string {
 		"down":           c.Keybindings.Down,
 		"left":           c.Keybindings.Left,
 		"right":          c.Keybindings.Right,
+		"go_to_top":      c.Keybindings.GoToTop,
+		"go_to_bottom":   c.Keybindings.GoToBottom,
 		"shift_up":       c.Keybindings.ShiftUp,
 		"shift_down":     c.Keybindings.ShiftDown,
 		"shift_left":     c.Keybindings.ShiftLeft,

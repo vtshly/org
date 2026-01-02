@@ -485,7 +485,7 @@ func (m uiModel) viewHelp() string {
 	lines = append(lines, "")
 
 	// Group bindings by category
-	navigationBindings := []key.Binding{m.keys.Up, m.keys.Down, m.keys.Left, m.keys.Right}
+	navigationBindings := []key.Binding{m.keys.Up, m.keys.Down, m.keys.Left, m.keys.Right, m.keys.GoToTop, m.keys.GoToBottom}
 	itemBindings := []key.Binding{m.keys.ToggleFold, m.keys.EditNotes, m.keys.CycleState}
 	taskBindings := []key.Binding{m.keys.Capture, m.keys.AddSubTask, m.keys.Delete}
 	timeBindings := []key.Binding{m.keys.ClockIn, m.keys.ClockOut, m.keys.SetDeadline, m.keys.SetEffort}
