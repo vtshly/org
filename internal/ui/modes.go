@@ -42,6 +42,8 @@ func (m uiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m.updateTagEdit(msg)
 	case modeRename:
 		return m.updateRename(msg)
+	case modeFilter:
+		return m.updateFilter(msg)
 	}
 
 	switch msg := msg.(type) {
@@ -299,7 +301,15 @@ func (m uiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.textinput.Focus()
 				return m, textinput.Blink
 			}
+
+		case key.Matches(msg, m.keys.Filter):
+			m.previousMode = m.mode
+			m.mode = modeFilter
+			m.filterInput.SetValue(m.activeFilter)
+			m.filterInput.Focus()
+			return m, textinput.Blink
 		}
+
 	}
 
 	return m, nil
@@ -1258,4 +1268,89 @@ func (m *uiModel) updateRename(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	}
 	return m, nil
+}
+
+func (m uiModel) updateFilter(msg tea.Msg) (tea.Model, tea.Cmd) {
+	var cmd tea.Cmd
+
+	switch msg := msg.(type) {
+	case tea.WindowSizeMsg:
+		m.width = msg.Width
+		m.height = msg.Height
+
+	case tea.KeyMsg:
+		switch msg.Type {
+		case tea.KeyEnter:
+			// Capture currently selected item if we have a filter active
+			var selectedItem *model.Item
+			if m.activeFilter != "" {
+				visibleItems := m.getVisibleItems()
+				if len(visibleItems) > 0 && m.cursor < len(visibleItems) {
+					selectedItem = visibleItems[m.cursor]
+				}
+			}
+
+			// Apply new filter
+			newFilter := strings.TrimSpace(m.filterInput.Value())
+			m.activeFilter = newFilter
+			m.mode = m.previousMode
+			m.filterInput.Blur()
+
+			if m.activeFilter != "" {
+				m.cursor = 0 // Reset cursor to top of filtered list
+				m.scrollOffset = 0
+				m.setStatus(fmt.Sprintf("Filtered by: %s", m.activeFilter))
+			} else {
+				// Filter cleared
+				m.setStatus("Filter cleared")
+				m.restoreCursorToItem(selectedItem)
+			}
+			return m, nil
+		case tea.KeyEsc:
+			m.mode = m.previousMode
+			m.filterInput.Blur()
+			m.setStatus("Filter cancelled")
+			return m, nil
+		}
+	}
+
+	m.filterInput, cmd = m.filterInput.Update(msg)
+	return m, cmd
+}
+
+// restoreCursorToItem attempts to position the cursor on the specified item
+func (m *uiModel) restoreCursorToItem(targetItem *model.Item) {
+	if targetItem == nil {
+		m.cursor = 0
+		m.scrollOffset = 0
+		return
+	}
+
+	// Get all items (unfiltered)
+	allItems := m.getVisibleItems()
+	found := false
+	for i, item := range allItems {
+		if item == targetItem {
+			m.cursor = i
+			found = true
+			break
+		}
+	}
+
+	if !found {
+		m.cursor = 0
+		m.scrollOffset = 0
+	} else {
+		// Update scroll to keep cursor visible
+		// We need to calculate this based on the new cursor position
+		// Simple approximation: ensure cursor is somewhat centered or at least visible
+		if m.cursor < m.scrollOffset {
+			m.scrollOffset = m.cursor
+		} else if m.cursor >= m.scrollOffset+m.height-5 {
+			m.scrollOffset = m.cursor - (m.height / 2)
+			if m.scrollOffset < 0 {
+				m.scrollOffset = 0
+			}
+		}
+	}
 }

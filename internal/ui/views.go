@@ -94,6 +94,8 @@ func (m uiModel) View() string {
 		return m.viewTagEdit()
 	case modeRename:
 		return m.viewRename()
+	case modeFilter:
+		return m.viewFilter()
 	}
 
 	// Build footer (status + help)
@@ -140,7 +142,11 @@ func (m uiModel) View() string {
 	// Items
 	items := m.getVisibleItems()
 	if len(items) == 0 {
-		content.WriteString("No items. Press 'c' to capture a new TODO.\n")
+		if m.activeFilter != "" {
+			content.WriteString("No items match filter. Press 'f' to change/clear filter.\n")
+		} else {
+			content.WriteString("No items. Press 'c' to capture a new TODO.\n")
+		}
 	}
 
 	// Build a map of item index to line count (for scrolling)
@@ -490,7 +496,7 @@ func (m uiModel) viewHelp() string {
 	taskBindings := []key.Binding{m.keys.Capture, m.keys.AddSubTask, m.keys.Delete}
 	timeBindings := []key.Binding{m.keys.ClockIn, m.keys.ClockOut, m.keys.SetDeadline, m.keys.SetEffort}
 	organizationBindings := []key.Binding{m.keys.SetPriority, m.keys.TagItem, m.keys.ShiftUp, m.keys.ShiftDown, m.keys.ToggleReorder}
-	viewBindings := []key.Binding{m.keys.ToggleView, m.keys.Settings, m.keys.Save, m.keys.Help, m.keys.Quit}
+	viewBindings := []key.Binding{m.keys.ToggleView, m.keys.Settings, m.keys.Filter, m.keys.Save, m.keys.Help, m.keys.Quit}
 
 	// Helper function to render a binding
 	renderBinding := func(b key.Binding) string {
@@ -1084,4 +1090,27 @@ func (m uiModel) viewRename() string {
 	content.WriteString(m.styles.statusStyle.Render("Press Enter to save • ESC to cancel") + "\n")
 
 	return content.String()
+}
+
+func (m uiModel) viewFilter() string {
+	dialogStyle := lipgloss.NewStyle().
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(lipgloss.Color("63")).
+		Padding(1, 2).
+		Width(60)
+
+	var content strings.Builder
+	content.WriteString(m.styles.titleStyle.Render("Filter Items"))
+	content.WriteString("\n\n")
+	content.WriteString(m.filterInput.View())
+	content.WriteString("\n\n")
+	content.WriteString(m.styles.statusStyle.Render("Enter text to filter by title (case-insensitive)"))
+	content.WriteString("\n")
+	content.WriteString(m.styles.statusStyle.Render("Leave empty to show all items"))
+	content.WriteString("\n")
+	content.WriteString(m.styles.statusStyle.Render("Press Enter to apply • ESC to cancel"))
+
+	dialog := dialogStyle.Render(content.String())
+
+	return lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center, dialog)
 }

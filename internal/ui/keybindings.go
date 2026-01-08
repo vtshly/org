@@ -35,6 +35,7 @@ type keyMap struct {
 	SetEffort     key.Binding
 	Settings      key.Binding
 	TagItem       key.Binding
+	Filter        key.Binding
 }
 
 // newKeyMapFromConfig creates a keyMap from configuration
@@ -150,7 +151,12 @@ func newKeyMapFromConfig(cfg *config.Config) keyMap {
 			key.WithKeys(kb.TagItem...),
 			key.WithHelp(formatKeyHelp(kb.TagItem), "add/edit tags"),
 		),
+		Filter: key.NewBinding(
+			key.WithKeys(kb.Filter...),
+			key.WithHelp(formatKeyHelp(kb.Filter), "filter items"),
+		),
 	}
+
 }
 
 // formatKeyHelp formats a slice of keys for display in help
@@ -196,6 +202,7 @@ func (k keyMap) getAllBindings() []key.Binding {
 		k.ToggleFold, k.EditNotes, k.ToggleReorder,
 		k.Capture, k.AddSubTask, k.Delete, k.Save,
 		k.ClockIn, k.ClockOut, k.SetDeadline, k.SetPriority, k.SetEffort,
-		k.TagItem, k.Settings, k.ToggleView, k.Help, k.Quit,
+		k.TagItem, k.Settings, k.ToggleView, k.Help, k.Quit, k.Filter,
 	}
+
 }

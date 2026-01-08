@@ -105,6 +105,7 @@ Feel free to fork and create a pull request if there's any features missing for 
 - **Automatic Logging**: All clock entries are logged in LOGBOOK drawer
 
 ### Notes & Documentation
+- **Filter Items**: Press 'f' to filter items
 - **Rich Notes**: Add detailed notes to any task with Enter key
 - **Syntax Highlighting**: Code blocks are automatically highlighted (supports both ```lang and #+BEGIN_SRC formats)
 - **Markdown Support**: Use markdown-style code blocks in your notes
@@ -121,6 +122,7 @@ Feel free to fork and create a pull request if there's any features missing for 
 | `enter` | Edit notes |
 | `c` | Capture new TODO |
 | `s` | Add sub-task |
+| `f` | Filter items |
 | `D` | Delete item (with confirmation) |
 | `R` | Rename item |
 | `#` | Add/edit tags |
@@ -242,6 +244,7 @@ toggle_fold = ["tab"]
 edit_notes = ["enter"]
 capture = ["c"]
 add_subtask = ["s"]
+filter = ["f"]
 delete = ["D"]
 tag_item = ["#"]
 settings = [","]

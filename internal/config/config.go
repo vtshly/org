@@ -47,6 +47,7 @@ type KeybindingsConfig struct {
 	Quit          []string `toml:"quit"`
 	Settings      []string `toml:"settings"`
 	TagItem       []string `toml:"tag_item"`
+	Filter        []string `toml:"filter"`
 }
 
 // ColorsConfig holds color configurations
@@ -130,7 +131,9 @@ func DefaultConfig() *Config {
 			Quit:          []string{"q", "ctrl+c"},
 			Settings:      []string{","},
 			TagItem:       []string{"#"},
+			Filter:        []string{"f"},
 		},
+
 		Colors: ColorsConfig{
 			Todo:      "202",
 			Progress:  "220",
@@ -533,7 +536,10 @@ func (c *Config) UpdateKeybinding(action string, keys []string) error {
 		c.Keybindings.ToggleView = keys
 	case "save":
 		c.Keybindings.Save = keys
+	case "filter":
+		c.Keybindings.Filter = keys
 	case "help":
+
 		c.Keybindings.Help = keys
 	case "quit":
 		c.Keybindings.Quit = keys
@@ -573,7 +579,9 @@ func (c *Config) GetAllKeybindings() map[string][]string {
 		"quit":           c.Keybindings.Quit,
 		"settings":       c.Keybindings.Settings,
 		"tag_item":       c.Keybindings.TagItem,
+		"filter":         c.Keybindings.Filter,
 	}
+
 }
 
 // GetDefaultNewTaskState returns the default state for new tasks

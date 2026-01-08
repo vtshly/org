@@ -28,31 +28,35 @@ const (
 	modeSettings
 	modeTagEdit
 	modeRename
+	modeFilter
 )
 
 type uiModel struct {
-	orgFile        *model.OrgFile
-	cursor         int
-	scrollOffset   int // Track the scroll position
-	helpScroll     int // Track scroll position in help mode
-	mode           viewMode
-	help           help.Model
-	keys           keyMap
-	styles         styleMap
-	config         *config.Config
-	width          int
-	height         int
-	statusMsg      string
-	statusExpiry   time.Time
-	editingItem    *model.Item
-	textarea       textarea.Model
-	textinput      textinput.Model
-	itemToDelete     *model.Item
-	reorderMode      bool
-	settingsCursor   int             // Cursor position in settings view
-	settingsScroll   int             // Scroll position in settings view
-	settingsSection  settingsSection // Current settings section/tab
-	captureCursor    int             // Store cursor position when entering capture mode
+	orgFile         *model.OrgFile
+	cursor          int
+	scrollOffset    int // Track the scroll position
+	helpScroll      int // Track scroll position in help mode
+	mode            viewMode
+	help            help.Model
+	keys            keyMap
+	styles          styleMap
+	config          *config.Config
+	width           int
+	height          int
+	statusMsg       string
+	statusExpiry    time.Time
+	editingItem     *model.Item
+	textarea        textarea.Model
+	textinput       textinput.Model
+	itemToDelete    *model.Item
+	reorderMode     bool
+	settingsCursor  int             // Cursor position in settings view
+	settingsScroll  int             // Scroll position in settings view
+	settingsSection settingsSection // Current settings section/tab
+	captureCursor   int             // Store cursor position when entering capture mode
+	activeFilter    string          // Active filter query (empty if no filter)
+	filterInput     textinput.Model // Input model for filter query
+	previousMode    viewMode        // Mode to return to after filter
 }
 
 func InitialModel(orgFile *model.OrgFile, cfg *config.Config, captureMode bool, captureText string) uiModel {
@@ -64,6 +68,10 @@ func InitialModel(orgFile *model.OrgFile, cfg *config.Config, captureMode bool, 
 	ti.Placeholder = "What needs doing?"
 	ti.CharLimit = 200
 
+	fi := textinput.New()
+	fi.Placeholder = "Filter items..."
+	fi.CharLimit = 50
+
 	h := help.New()
 	h.ShowAll = false
 
@@ -74,16 +82,18 @@ func InitialModel(orgFile *model.OrgFile, cfg *config.Config, captureMode bool, 
 	}
 
 	return uiModel{
-		orgFile:   orgFile,
-		cursor:    0,
-		mode:      mode,
-		help:      h,
-		keys:      newKeyMapFromConfig(cfg),
-		styles:    newStyleMapFromConfig(cfg),
-		config:    cfg,
-		textarea:  ta,
-		textinput: ti,
+		orgFile:     orgFile,
+		cursor:      0,
+		mode:        mode,
+		help:        h,
+		keys:        newKeyMapFromConfig(cfg),
+		styles:      newStyleMapFromConfig(cfg),
+		config:      cfg,
+		textarea:    ta,
+		textinput:   ti,
+		filterInput: fi,
 	}
+
 }
 
 func (m uiModel) Init() tea.Cmd {
@@ -99,10 +109,27 @@ func (m *uiModel) setStatus(msg string) {
 }
 
 func (m uiModel) getVisibleItems() []*model.Item {
+	var items []*model.Item
 	if m.mode == modeAgenda {
-		return m.getAgendaItems()
+		items = m.getAgendaItems()
+	} else {
+		items = m.orgFile.GetAllItems()
 	}
-	return m.orgFile.GetAllItems()
+
+	// Apply filter if active
+	if m.activeFilter != "" {
+		var filtered []*model.Item
+		filterLower := strings.ToLower(m.activeFilter)
+		for _, item := range items {
+			if strings.Contains(strings.ToLower(item.Title), filterLower) {
+				filtered = append(filtered, item)
+			}
+		}
+		return filtered
+	}
+
+	return items
+
 }
 
 func (m *uiModel) updateScrollOffset(availableHeight int) {
