@@ -31,28 +31,29 @@ const (
 )
 
 type uiModel struct {
-	orgFile        *model.OrgFile
-	cursor         int
-	scrollOffset   int // Track the scroll position
-	helpScroll     int // Track scroll position in help mode
-	mode           viewMode
-	help           help.Model
-	keys           keyMap
-	styles         styleMap
-	config         *config.Config
-	width          int
-	height         int
-	statusMsg      string
-	statusExpiry   time.Time
-	editingItem    *model.Item
-	textarea       textarea.Model
-	textinput      textinput.Model
-	itemToDelete     *model.Item
-	reorderMode      bool
-	settingsCursor   int             // Cursor position in settings view
-	settingsScroll   int             // Scroll position in settings view
-	settingsSection  settingsSection // Current settings section/tab
-	captureCursor    int             // Store cursor position when entering capture mode
+	orgFile         *model.OrgFile
+	cursor          int
+	scrollOffset    int // Track the scroll position
+	helpScroll      int // Track scroll position in help mode
+	mode            viewMode
+	help            help.Model
+	keys            keyMap
+	styles          styleMap
+	config          *config.Config
+	width           int
+	height          int
+	statusMsg       string
+	statusExpiry    time.Time
+	editingItem     *model.Item
+	textarea        textarea.Model
+	textinput       textinput.Model
+	itemToDelete    *model.Item
+	reorderMode     bool
+	settingsCursor  int             // Cursor position in settings view
+	settingsScroll  int             // Scroll position in settings view
+	settingsSection settingsSection // Current settings section/tab
+	captureCursor   int             // Store cursor position when entering capture mode
+	zoomedItem      *model.Item     // Item currently zoomed into
 }
 
 func InitialModel(orgFile *model.OrgFile, cfg *config.Config, captureMode bool, captureText string) uiModel {
@@ -99,6 +100,9 @@ func (m *uiModel) setStatus(msg string) {
 }
 
 func (m uiModel) getVisibleItems() []*model.Item {
+	if m.zoomedItem != nil {
+		return m.zoomedItem.GetSubtreeItems()
+	}
 	if m.mode == modeAgenda {
 		return m.getAgendaItems()
 	}

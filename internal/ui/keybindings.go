@@ -35,6 +35,8 @@ type keyMap struct {
 	SetEffort     key.Binding
 	Settings      key.Binding
 	TagItem       key.Binding
+	ZoomIn        key.Binding
+	ZoomOut       key.Binding
 }
 
 // newKeyMapFromConfig creates a keyMap from configuration
@@ -150,6 +152,14 @@ func newKeyMapFromConfig(cfg *config.Config) keyMap {
 			key.WithKeys(kb.TagItem...),
 			key.WithHelp(formatKeyHelp(kb.TagItem), "add/edit tags"),
 		),
+		ZoomIn: key.NewBinding(
+			key.WithKeys(kb.ZoomIn...),
+			key.WithHelp(formatKeyHelp(kb.ZoomIn), "zoom in"),
+		),
+		ZoomOut: key.NewBinding(
+			key.WithKeys(kb.ZoomOut...),
+			key.WithHelp(formatKeyHelp(kb.ZoomOut), "zoom out"),
+		),
 	}
 }
 
@@ -196,6 +206,7 @@ func (k keyMap) getAllBindings() []key.Binding {
 		k.ToggleFold, k.EditNotes, k.ToggleReorder,
 		k.Capture, k.AddSubTask, k.Delete, k.Save,
 		k.ClockIn, k.ClockOut, k.SetDeadline, k.SetPriority, k.SetEffort,
+		k.ZoomIn, k.ZoomOut,
 		k.TagItem, k.Settings, k.ToggleView, k.Help, k.Quit,
 	}
 }

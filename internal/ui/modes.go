@@ -299,6 +299,56 @@ func (m uiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.textinput.Focus()
 				return m, textinput.Blink
 			}
+
+		case key.Matches(msg, m.keys.ZoomIn):
+			items := m.getVisibleItems()
+			if len(items) > 0 && m.cursor < len(items) {
+				m.zoomedItem = items[m.cursor]
+				m.cursor = 0 // Reset cursor to top of subtree
+				m.setStatus("Zoomed into " + m.zoomedItem.Title)
+			}
+
+		case key.Matches(msg, m.keys.ZoomOut):
+			if m.zoomedItem != nil {
+				// Get the currently selected item in the zoomed view to preserve focus
+				var targetItem *model.Item
+				items := m.getVisibleItems()
+				if m.cursor < len(items) {
+					targetItem = items[m.cursor]
+				}
+
+				// Clear narrowing
+				m.zoomedItem = nil
+				m.setStatus("Zoom cleared")
+
+				// Restore cursor to the item we were just on
+				if targetItem != nil {
+					allItems := m.getVisibleItems()
+					found := false
+					for i, item := range allItems {
+						if item == targetItem {
+							m.cursor = i
+							found = true
+							break
+						}
+					}
+					// If not found (shouldn't happen), we default to 0 or keep roughly same position
+					if !found {
+						m.cursor = 0
+					} else {
+						// Ensure the item is visible
+						availableHeight := m.height - 6
+						if availableHeight < 5 {
+							availableHeight = 5
+						}
+						m.updateScrollOffset(availableHeight)
+					}
+				} else {
+					m.cursor = 0
+				}
+			} else {
+				m.setStatus("Not zoomed in")
+			}
 		}
 	}
 

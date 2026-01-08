@@ -14,11 +14,11 @@ const (
 
 // Item represents a single org-mode item (heading)
 type Item struct {
-	Level        int          // Heading level (number of *)
-	State        TodoState    // TODO, PROG, BLOCK, DONE, or empty
-	Priority     Priority     // Priority: A, B, C, or empty
-	Title        string       // The main title text
-	Tags         []string     // Tags for this item (e.g., :work:urgent:)
+	Level        int       // Heading level (number of *)
+	State        TodoState // TODO, PROG, BLOCK, DONE, or empty
+	Priority     Priority  // Priority: A, B, C, or empty
+	Title        string    // The main title text
+	Tags         []string  // Tags for this item (e.g., :work:urgent:)
 	Scheduled    *time.Time
 	Deadline     *time.Time
 	Closed       *time.Time   // Closed timestamp (when task was marked as done)
@@ -134,5 +134,23 @@ func (of *OrgFile) GetAllItems() []*Item {
 		}
 	}
 	flatten(of.Items)
+	return items
+}
+
+// GetSubtreeItems returns a flattened list of the item and its visible children
+// This is used when the view is zoomed to this item
+func (item *Item) GetSubtreeItems() []*Item {
+	var items []*Item
+	// transform logic to include self + children
+	var flatten func(*Item)
+	flatten = func(curr *Item) {
+		items = append(items, curr)
+		if !curr.Folded {
+			for _, child := range curr.Children {
+				flatten(child)
+			}
+		}
+	}
+	flatten(item)
 	return items
 }

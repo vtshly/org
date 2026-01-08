@@ -106,6 +106,7 @@ Feel free to fork and create a pull request if there's any features missing for 
 
 ### Notes & Documentation
 - **Rich Notes**: Add detailed notes to any task with Enter key
+- **Zoom In/Out item**: Press 'z' to zoom into an item, see its children and 'Z' to zoom out (it's like org-narrow-to-subtree in Emacs)
 - **Syntax Highlighting**: Code blocks are automatically highlighted (supports both ```lang and #+BEGIN_SRC formats)
 - **Markdown Support**: Use markdown-style code blocks in your notes
 - **Drawer Management**: LOGBOOK and PROPERTIES drawers are automatically filtered in list view
@@ -131,6 +132,8 @@ Feel free to fork and create a pull request if there's any features missing for 
 | `p` | Set priority |
 | `e` | Set effort |
 | `r` | Toggle reorder mode |
+| `z` | Zoom in |
+| `Z` | Zoom out |
 | `shift+↑/↓` | Move item up/down |
 | `sift+←/→` | Promote/demote item |
 | `,` | Open settings |

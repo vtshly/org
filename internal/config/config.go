@@ -47,6 +47,8 @@ type KeybindingsConfig struct {
 	Quit          []string `toml:"quit"`
 	Settings      []string `toml:"settings"`
 	TagItem       []string `toml:"tag_item"`
+	ZoomIn        []string `toml:"zoom_in"`
+	ZoomOut       []string `toml:"zoom_out"`
 }
 
 // ColorsConfig holds color configurations
@@ -130,6 +132,8 @@ func DefaultConfig() *Config {
 			Quit:          []string{"q", "ctrl+c"},
 			Settings:      []string{","},
 			TagItem:       []string{"#"},
+			ZoomIn:        []string{"z"},
+			ZoomOut:       []string{"Z"},
 		},
 		Colors: ColorsConfig{
 			Todo:      "202",
@@ -329,6 +333,12 @@ func (c *Config) fillDefaults() {
 	}
 	if len(c.Keybindings.TagItem) == 0 {
 		c.Keybindings.TagItem = defaults.Keybindings.TagItem
+	}
+	if len(c.Keybindings.ZoomIn) == 0 {
+		c.Keybindings.ZoomIn = defaults.Keybindings.ZoomIn
+	}
+	if len(c.Keybindings.ZoomOut) == 0 {
+		c.Keybindings.ZoomOut = defaults.Keybindings.ZoomOut
 	}
 
 	// Fill colors if empty
@@ -537,6 +547,10 @@ func (c *Config) UpdateKeybinding(action string, keys []string) error {
 		c.Keybindings.Help = keys
 	case "quit":
 		c.Keybindings.Quit = keys
+	case "zoom_in":
+		c.Keybindings.ZoomIn = keys
+	case "zoom_out":
+		c.Keybindings.ZoomOut = keys
 	default:
 		return fmt.Errorf("unknown action: %s", action)
 	}
@@ -573,6 +587,8 @@ func (c *Config) GetAllKeybindings() map[string][]string {
 		"quit":           c.Keybindings.Quit,
 		"settings":       c.Keybindings.Settings,
 		"tag_item":       c.Keybindings.TagItem,
+		"zoom_in":        c.Keybindings.ZoomIn,
+		"zoom_out":       c.Keybindings.ZoomOut,
 	}
 }
 

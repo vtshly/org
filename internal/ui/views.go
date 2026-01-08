@@ -122,6 +122,10 @@ func (m uiModel) View() string {
 	if m.mode == modeAgenda {
 		title = "Org Mode - Agenda View (Next 7 Days)"
 	}
+	if m.zoomedItem != nil {
+		title += fmt.Sprintf(" [ZOOMED: %s]", m.zoomedItem.Title)
+	}
+
 	if m.reorderMode {
 		reorderIndicator := lipgloss.NewStyle().Foreground(lipgloss.Color("220")).Render(" [REORDER MODE]")
 		content.WriteString(m.styles.titleStyle.Render(title))
@@ -486,7 +490,7 @@ func (m uiModel) viewHelp() string {
 
 	// Group bindings by category
 	navigationBindings := []key.Binding{m.keys.Up, m.keys.Down, m.keys.Left, m.keys.Right}
-	itemBindings := []key.Binding{m.keys.ToggleFold, m.keys.EditNotes, m.keys.CycleState}
+	itemBindings := []key.Binding{m.keys.ToggleFold, m.keys.EditNotes, m.keys.CycleState, m.keys.ZoomIn, m.keys.ZoomOut}
 	taskBindings := []key.Binding{m.keys.Capture, m.keys.AddSubTask, m.keys.Delete}
 	timeBindings := []key.Binding{m.keys.ClockIn, m.keys.ClockOut, m.keys.SetDeadline, m.keys.SetEffort}
 	organizationBindings := []key.Binding{m.keys.SetPriority, m.keys.TagItem, m.keys.ShiftUp, m.keys.ShiftDown, m.keys.ToggleReorder}
